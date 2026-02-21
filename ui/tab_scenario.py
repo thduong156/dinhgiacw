@@ -17,29 +17,29 @@ from ui.charts import (
 
 
 def render_scenario_tab(cw):
-    """Tab 9: Kịch Bản & Stress Test — Scenario Analysis."""
+    """Tab 9: Kịch Bản & Kiểm Tra Sức Chịu Đựng."""
     if cw is None:
         tab_empty_state(
             "🎯", "Chưa chọn CW để phân tích kịch bản",
-            "Thêm CW vào portfolio ở Sidebar, sau đó chọn CW để xem "
-            "phân tích kịch bản và stress test.",
-            "Sidebar → Chọn CW",
+            "Thêm CW vào danh mục ở thanh bên, sau đó chọn CW để xem "
+            "phân tích kịch bản và kiểm tra sức chịu đựng.",
+            "Thanh bên → Chọn CW",
         )
         return
 
-    section_title("🎯", "Kịch Bản & Stress Test")
+    section_title("🎯", "Kịch Bản & Kiểm Tra Sức Chịu Đựng")
 
     st.markdown(
         '<div class="info-box">'
         '<b>Phân tích kịch bản giúp trả lời 3 câu hỏi then chốt:</b><br>'
-        '1. <b>Nên mua CW nào?</b> → Xem P&L ở nhiều mức giá<br>'
-        '2. <b>Khi nào vào?</b> → Xem ảnh hưởng của IV shock<br>'
-        '3. <b>Khi nào thoát?</b> → Xem break-even decay & time erosion'
+        '1. <b>Nên mua CW nào?</b> → Xem lãi/lỗ ở nhiều mức giá<br>'
+        '2. <b>Khi nào vào lệnh?</b> → Xem ảnh hưởng của cú sốc biến động<br>'
+        '3. <b>Khi nào thoát lệnh?</b> → Xem đường suy giảm hoà vốn & bào mòn thời gian'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # Build analyzer
+    # Xây dựng bộ phân tích
     analyzer = WarrantAnalyzer(
         S=cw["S"], K=cw["K"], T=cw["T"],
         r=cw["r"], sigma=cw["sigma"],
@@ -49,7 +49,7 @@ def render_scenario_tab(cw):
         q=cw.get("q", 0.0),
     )
 
-    # Render all 6 sub-features
+    # Hiển thị toàn bộ 6 phần phân tích
     _render_pnl_heatmap(analyzer, cw)
     section_divider()
     _render_vol_shock(analyzer, cw)
@@ -64,12 +64,12 @@ def render_scenario_tab(cw):
 
 
 # ============================================================
-# 1. P&L HEATMAP (Price x Time) — Core Feature
+# 1. BẢNG NHIỆT LÃI/LỖ (Giá × Thời Gian) — Tính năng chính
 # ============================================================
 
 def _render_pnl_heatmap(analyzer, cw):
-    """P&L Heatmap: Y = Giá CS, X = Ngày còn lại."""
-    section_title("📊", "P&L Heatmap (Giá × Thời Gian)")
+    """Bảng nhiệt Lãi/Lỗ: Y = Giá cơ sở, X = Ngày còn lại."""
+    section_title("📊", "Bảng Nhiệt Lãi/Lỗ (Giá × Thời Gian)")
 
     S = cw["S"]
     cw_price = cw["cw_price"]
@@ -78,21 +78,21 @@ def _render_pnl_heatmap(analyzer, cw):
     if max_days < 2:
         max_days = 2
 
-    # Price range: +-25% from current, 11 steps
+    # Phạm vi giá: +-25% từ giá hiện tại, 11 bước
     pct_range = np.linspace(-0.25, 0.25, 11)
     price_levels = [S * (1 + p) for p in pct_range]
     price_labels = [f"{p:,.0f}" for p in price_levels]
 
-    # Time range: from max_days down to 1, ~12 steps
+    # Phạm vi thời gian: từ max_days đến 1, ~12 bước
     num_time_steps = min(12, max_days)
     time_steps = np.linspace(max_days, 1, num_time_steps, dtype=int).tolist()
-    # Remove duplicates and sort descending
+    # Loại bỏ trùng lặp và sắp xếp giảm dần
     time_steps = sorted(set(time_steps), reverse=True)
-    time_labels = [f"{d}d" for d in time_steps]
+    time_labels = [f"{d} ngày" for d in time_steps]
 
-    # Compute P&L grid
+    # Tính toán lưới lãi/lỗ
     z_data = []
-    be_y = []  # break-even price at each time step
+    be_y = []  # giá hoà vốn tại mỗi bước thời gian
 
     for s_new in price_levels:
         row = []
@@ -105,7 +105,7 @@ def _render_pnl_heatmap(analyzer, cw):
             cw_new = model.price() / cr
             pnl = cw_new - cw_price
 
-            # Scale by quantity if position exists
+            # Nhân theo số lượng nếu có vị thế
             qty = cw.get("quantity")
             entry_p = cw.get("entry_price")
             if qty and entry_p and qty > 0 and entry_p > 0:
@@ -113,31 +113,30 @@ def _render_pnl_heatmap(analyzer, cw):
             row.append(round(pnl))
         z_data.append(row)
 
-    # Break-even at each time step (formatted as strings to match y_labels)
+    # Giá hoà vốn tại mỗi bước thời gian
     for days in time_steps:
         T_new = max(days / 365.0, 0.001)
         ref_price = cw.get("entry_price") if (cw.get("entry_price") or 0) > 0 else cw_price
-        # Binary search for break-even price
+        # Tìm kiếm nhị phân giá hoà vốn
         be = _find_breakeven_price(
             cw["K"], T_new, cw["r"], cw["sigma"], cr,
             cw["option_type"], cw.get("q", 0.0), ref_price, S,
         )
         be_y.append(f"{be:,.0f}")
 
-    # Current position marker
+    # Đánh dấu vị trí hiện tại
     current_marker = None
-    # Find closest time and price index
     current_days_left = max_days
     if time_steps:
         closest_t = min(time_steps, key=lambda d: abs(d - current_days_left))
-        current_marker = (f"{closest_t}d", f"{S:,.0f}")
+        current_marker = (f"{closest_t} ngày", f"{S:,.0f}")
 
-    chart_container("P&L Heatmap: Giá Cơ Sở × Ngày Còn Lại")
+    chart_container("Bảng Nhiệt Lãi/Lỗ: Giá Cổ Sở × Ngày Còn Lại")
     fig = create_pnl_heatmap(z_data, price_labels, time_labels, be_y, current_marker)
     st.plotly_chart(fig, use_container_width=True)
     chart_container_end()
 
-    # Explanation
+    # Giải thích
     has_position = (
         cw.get("quantity") and cw.get("entry_price")
         and cw["quantity"] > 0 and cw["entry_price"] > 0
@@ -145,7 +144,7 @@ def _render_pnl_heatmap(analyzer, cw):
     if has_position:
         st.markdown(
             f'<div class="info-box">'
-            f'P&L tính cho vị thế: <b>{cw["quantity"]:,} CW</b> × '
+            f'Lãi/Lỗ tính cho vị thế: <b>{cw["quantity"]:,} CW</b> × '
             f'giá vào <b>{format_vnd(cw["entry_price"])} đ</b>. '
             f'Đường vàng = điểm hoà vốn. Kim cương cam = vị trí hiện tại.'
             f'</div>',
@@ -154,15 +153,15 @@ def _render_pnl_heatmap(analyzer, cw):
     else:
         st.markdown(
             '<div class="info-box">'
-            'P&L = (Giá CW mới − Giá CW hiện tại) trên <b>1 CW</b>. '
-            'Thêm <b>Entry Price & SL</b> ở Sidebar để tính P&L theo vị thế thực.'
+            'Lãi/Lỗ = (Giá CW mới − Giá CW hiện tại) trên <b>1 CW</b>. '
+            'Thêm <b>Giá vào & Cắt lỗ</b> ở thanh bên để tính lãi/lỗ theo vị thế thực.'
             '</div>',
             unsafe_allow_html=True,
         )
 
 
 def _find_breakeven_price(K, T, r, sigma, cr, option_type, q, target_price, S_guess):
-    """Binary search for break-even underlying price at given T."""
+    """Tìm kiếm nhị phân giá cơ sở hoà vốn tại thời điểm T cho trước."""
     low = K * 0.3
     high = K * 3.0
     for _ in range(60):
@@ -185,19 +184,19 @@ def _find_breakeven_price(K, T, r, sigma, cr, option_type, q, target_price, S_gu
 
 
 # ============================================================
-# 2. VOLATILITY SHOCK ANALYSIS
+# 2. PHÂN TÍCH CÚ SỐC BIẾN ĐỘNG
 # ============================================================
 
 def _render_vol_shock(analyzer, cw):
-    """Heatmap: Y = DGia CS (%), X = DIV (points), with holding period slider."""
-    section_title("💥", "Volatility Shock Analysis")
+    """Bảng nhiệt: Y = Thay đổi giá CS (%), X = Thay đổi IV (điểm)."""
+    section_title("💥", "Phân Tích Cú Sốc Biến Động")
 
     S = cw["S"]
     cw_price = cw["cw_price"]
     cr = cw["cr"]
     max_days = max(int(cw["T"] * 365), 2)
 
-    # Holding period slider
+    # Thanh trượt thời gian nắm giữ
     slider_max = min(max_days - 1, 60)
     hold_days = st.slider(
         "Thời gian nắm giữ (ngày)",
@@ -210,15 +209,15 @@ def _render_vol_shock(analyzer, cw):
 
     T_hold = max((cw["T"] * 365 - hold_days) / 365.0, 0.001)
 
-    # Price change range
+    # Phạm vi thay đổi giá
     price_pcts = [-15, -10, -7, -5, -3, 0, 3, 5, 7, 10, 15]
     price_labels = [f"{p:+d}%" for p in price_pcts]
 
-    # IV change range (absolute points)
+    # Phạm vi thay đổi IV (điểm tuyệt đối)
     iv_points = [-10, -7, -5, -3, 0, 3, 5, 7, 10]
-    iv_labels = [f"{v:+d}pts" for v in iv_points]
+    iv_labels = [f"{v:+d} điểm" for v in iv_points]
 
-    # Compute P&L grid
+    # Tính toán lưới lãi/lỗ
     z_data = []
     for dp in price_pcts:
         row = []
@@ -242,16 +241,16 @@ def _render_vol_shock(analyzer, cw):
             row.append(round(pnl))
         z_data.append(row)
 
-    chart_container(f"Vol Shock: Nắm giữ {hold_days} ngày")
+    chart_container(f"Cú Sốc Biến Động: Nắm giữ {hold_days} ngày")
     fig = create_vol_shock_heatmap(z_data, price_labels, iv_labels)
     st.plotly_chart(fig, use_container_width=True)
     chart_container_end()
 
     st.markdown(
         f'<div class="info-box">'
-        f'Đọc heatmap: "Nếu CS giảm 5% <b>VÀ</b> IV tăng 5pts '
+        f'Cách đọc bảng nhiệt: "Nếu cơ sở giảm 5% <b>VÀ</b> biến động ngầm định tăng 5 điểm '
         f'sau <b>{hold_days} ngày</b> → CW sẽ lãi/lỗ bao nhiêu?"<br>'
-        f'<small>T còn lại sau kịch bản: {T_hold*365:.0f} ngày '
+        f'<small>Thời gian còn lại sau kịch bản: {T_hold*365:.0f} ngày '
         f'(từ {cw["T"]*365:.0f} ngày hiện tại)</small>'
         f'</div>',
         unsafe_allow_html=True,
@@ -259,11 +258,11 @@ def _render_vol_shock(analyzer, cw):
 
 
 # ============================================================
-# 3. QUICK SCENARIOS (5 presets)
+# 3. 5 KỊCH BẢN NHANH (thiết lập sẵn)
 # ============================================================
 
 def _render_quick_scenarios(analyzer, cw):
-    """5 kịch bản preset: Bull, Bear, Crash, Theta Bleed, Rally+IV Crush."""
+    """5 kịch bản thiết lập sẵn: Tăng, Giảm, Sụp đổ, Bào mòn thời gian, Tăng mạnh + Biến động giảm."""
     section_title("⚡", "5 Kịch Bản Nhanh")
 
     S = cw["S"]
@@ -275,32 +274,32 @@ def _render_quick_scenarios(analyzer, cw):
 
     scenarios = [
         {
-            "name": "🐂 Bull",
-            "desc": "CS +5%, IV ổn định",
+            "name": "🐂 Tăng giá",
+            "desc": "Cơ sở +5%, biến động ổn định",
             "dS_pct": 5, "dIV_pts": 0, "hold_days": 5,
             "color": "#22C55E",
         },
         {
-            "name": "🐻 Bear",
-            "desc": "CS -5%, IV +3pts",
+            "name": "🐻 Giảm giá",
+            "desc": "Cơ sở -5%, biến động +3 điểm",
             "dS_pct": -5, "dIV_pts": 3, "hold_days": 5,
             "color": "#EF4444",
         },
         {
-            "name": "💥 Crash",
-            "desc": "CS -10%, IV +8pts",
+            "name": "💥 Sụp đổ",
+            "desc": "Cơ sở -10%, biến động +8 điểm",
             "dS_pct": -10, "dIV_pts": 8, "hold_days": 3,
             "color": "#B91C1C",
         },
         {
-            "name": "⏳ Theta Bleed",
-            "desc": "CS đi ngang, 10 ngày trôi",
+            "name": "⏳ Bào mòn thời gian",
+            "desc": "Cơ sở đi ngang, 10 ngày trôi qua",
             "dS_pct": 0, "dIV_pts": 0, "hold_days": 10,
             "color": "#F59E0B",
         },
         {
-            "name": "🚀 Rally + IV Crush",
-            "desc": "CS +8%, IV -5pts",
+            "name": "🚀 Tăng mạnh + BĐ giảm",
+            "desc": "Cơ sở +8%, biến động -5 điểm",
             "dS_pct": 8, "dIV_pts": -5, "hold_days": 5,
             "color": "#3B82F6",
         },
@@ -320,14 +319,14 @@ def _render_quick_scenarios(analyzer, cw):
             )
             cw_new = model.price() / cr
 
-            # Greeks at new point
+            # Chỉ số Hy Lạp tại điểm mới
             greeks_calc = GreeksCalculator(model, cr)
             new_delta = greeks_calc.delta()
 
             pnl = cw_new - cw_price
             pnl_pct = (pnl / cw_price * 100) if cw_price > 0 else 0
 
-            # Position P&L
+            # Lãi/Lỗ vị thế
             qty = cw.get("quantity")
             entry_p = cw.get("entry_price")
             pnl_pos = ""
@@ -348,7 +347,7 @@ def _render_quick_scenarios(analyzer, cw):
                 f'<div style="font-size:15px;font-weight:700;color:{pnl_color};">'
                 f'{pnl_pct:+.1f}%</div>'
                 f'<div style="font-size:11px;color:#94A3B8;">'
-                f'Δ = {new_delta:.4f}</div>'
+                f'Delta = {new_delta:.4f}</div>'
                 f'{pnl_pos}'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -356,12 +355,12 @@ def _render_quick_scenarios(analyzer, cw):
 
 
 # ============================================================
-# 4. BREAK-EVEN DECAY CURVE
+# 4. ĐƯỜNG SUY GIẢM HOÀ VỐN
 # ============================================================
 
 def _render_breakeven_decay(analyzer, cw):
-    """Line chart: X = Ngày nắm giữ, Y = Giá CS cần để hòa vốn."""
-    section_title("📉", "Break-Even Decay Curve")
+    """Biểu đồ đường: X = Ngày nắm giữ, Y = Giá cơ sở cần để hòa vốn."""
+    section_title("📉", "Đường Suy Giảm Hoà Vốn")
 
     S = cw["S"]
     K = cw["K"]
@@ -373,7 +372,7 @@ def _render_breakeven_decay(analyzer, cw):
 
     ref_price = cw.get("entry_price") if (cw.get("entry_price") or 0) > 0 else cw_price
 
-    # Compute break-even at each holding day
+    # Tính giá hoà vốn theo từng ngày nắm giữ
     num_points = min(20, max_days)
     hold_days = np.linspace(0, max_days - 1, num_points, dtype=int).tolist()
     hold_days = sorted(set(hold_days))
@@ -396,10 +395,10 @@ def _render_breakeven_decay(analyzer, cw):
         chart_container_end()
 
     with col_info:
-        # Key milestones
+        # Các mốc quan trọng
         st.markdown(
             '<div style="padding:12px;">'
-            '<h4 style="color:#FF6B35;margin:0 0 12px 0;">📌 Mốc Quan Trọng</h4>',
+            '<h4 style="color:#B8C2DB;margin:0 0 12px 0;">📌 Mốc Quan Trọng</h4>',
             unsafe_allow_html=True,
         )
 
@@ -422,7 +421,7 @@ def _render_breakeven_decay(analyzer, cw):
                 f'<span style="color:#F1F5F9;font-size:14px;font-weight:600;">'
                 f'{format_vnd(be)} đ</span> '
                 f'<span style="color:{move_color};font-size:12px;">'
-                f'(CS cần {move_pct:+.1f}%)</span>'
+                f'(Cơ sở cần {move_pct:+.1f}%)</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -431,11 +430,11 @@ def _render_breakeven_decay(analyzer, cw):
 
 
 # ============================================================
-# 5. HOLDING PERIOD ANALYSIS TABLE
+# 5. BẢNG PHÂN TÍCH THEO THỜI GIAN NẮM GIỮ
 # ============================================================
 
 def _render_holding_analysis(analyzer, cw):
-    """Table: Columns = holding periods, Rows = key metrics."""
+    """Bảng: Cột = thời gian nắm giữ, Hàng = chỉ số quan trọng."""
     section_title("📋", "Phân Tích Theo Thời Gian Nắm Giữ")
 
     S = cw["S"]
@@ -450,24 +449,24 @@ def _render_holding_analysis(analyzer, cw):
     periods = [p for p in periods if p < max_days]
 
     if not periods:
-        st.warning("CW còn quá ít ngày để phân tích holding period.")
+        st.warning("CW còn quá ít ngày để phân tích thời gian nắm giữ.")
         return
 
     rows = []
 
-    # Row 1: CS cần để hòa vốn
-    be_row = {"Chỉ Số": "CS cần để hòa vốn"}
+    # Hàng 1: Giá cơ sở cần để hoà vốn
+    be_row = {"Chỉ Số": "Cơ sở cần để hoà vốn"}
     for p in periods:
         T_remain = max((max_days - p) / 365.0, 0.001)
         be = _find_breakeven_price(
             K, T_remain, cw["r"], sigma, cr,
             cw["option_type"], cw.get("q", 0.0), ref_price, S,
         )
-        be_row[f"{p}d"] = f"{format_vnd(be)} đ"
+        be_row[f"{p} ngày"] = f"{format_vnd(be)} đ"
     rows.append(be_row)
 
-    # Row 2: % CS cần thay đổi
-    move_row = {"Chỉ Số": "CS cần thay đổi (%)"}
+    # Hàng 2: % cơ sở cần thay đổi
+    move_row = {"Chỉ Số": "Cơ sở cần thay đổi (%)"}
     for p in periods:
         T_remain = max((max_days - p) / 365.0, 0.001)
         be = _find_breakeven_price(
@@ -475,15 +474,15 @@ def _render_holding_analysis(analyzer, cw):
             cw["option_type"], cw.get("q", 0.0), ref_price, S,
         )
         move_pct = ((be / S) - 1) * 100 if S > 0 else 0
-        move_row[f"{p}d"] = f"{move_pct:+.1f}%"
+        move_row[f"{p} ngày"] = f"{move_pct:+.1f}%"
     rows.append(move_row)
 
-    # Row 3: P&L if CS +1 sigma move
-    sigma_1d = sigma / np.sqrt(252)  # daily vol
-    pnl_up_row = {"Chỉ Số": "P&L nếu CS +1σ"}
+    # Hàng 3: Lãi/Lỗ nếu cơ sở tăng 1 độ lệch chuẩn
+    sigma_1d = sigma / np.sqrt(252)  # biến động ngày
+    pnl_up_row = {"Chỉ Số": "Lãi/Lỗ nếu cơ sở +1σ"}
     for p in periods:
         T_remain = max((max_days - p) / 365.0, 0.001)
-        move = sigma_1d * np.sqrt(p)  # sqrt(t) scaling
+        move = sigma_1d * np.sqrt(p)  # quy mô √t
         new_S = S * (1 + move)
         model = BlackScholesModel(
             new_S, K, T_remain, cw["r"], sigma,
@@ -491,10 +490,10 @@ def _render_holding_analysis(analyzer, cw):
         )
         cw_new = model.price() / cr
         pnl_pct = ((cw_new / ref_price) - 1) * 100 if ref_price > 0 else 0
-        pnl_up_row[f"{p}d"] = f"{pnl_pct:+.1f}%"
+        pnl_up_row[f"{p} ngày"] = f"{pnl_pct:+.1f}%"
     rows.append(pnl_up_row)
 
-    # Row 4: Max loss if CS flat
+    # Hàng 4: Lỗ tối đa nếu giá đi ngang
     flat_row = {"Chỉ Số": "Lỗ tối đa nếu đi ngang"}
     for p in periods:
         T_remain = max((max_days - p) / 365.0, 0.001)
@@ -504,10 +503,10 @@ def _render_holding_analysis(analyzer, cw):
         )
         cw_flat = model.price() / cr
         loss_pct = ((cw_flat / ref_price) - 1) * 100 if ref_price > 0 else 0
-        flat_row[f"{p}d"] = f"{loss_pct:+.1f}%"
+        flat_row[f"{p} ngày"] = f"{loss_pct:+.1f}%"
     rows.append(flat_row)
 
-    # Row 5: Effective leverage at that point
+    # Hàng 5: Đòn bẩy hiệu dụng
     lev_row = {"Chỉ Số": "Đòn bẩy hiệu dụng"}
     for p in periods:
         T_remain = max((max_days - p) / 365.0, 0.001)
@@ -521,15 +520,15 @@ def _render_holding_analysis(analyzer, cw):
         denom = cw_t * cr
         gear = S / denom if denom > 0 else 0
         eff_lev = raw_delta * gear
-        lev_row[f"{p}d"] = f"{eff_lev:.1f}x"
+        lev_row[f"{p} ngày"] = f"{eff_lev:.1f}x"
     rows.append(lev_row)
 
-    # Row 6: Probability of Profit (approximate, risk-neutral)
-    pop_row = {"Chỉ Số": "Xác suất lãi (P.o.P)"}
+    # Hàng 6: Xác suất có lãi (gần đúng, trung tính rủi ro)
+    pop_row = {"Chỉ Số": "Xác suất có lãi"}
     from scipy.stats import norm as _norm
     for p in periods:
         T_remain = max((max_days - p) / 365.0, 0.001)
-        T_hold = max(p / 365.0, 0.001)  # Time horizon = holding period
+        T_hold = max(p / 365.0, 0.001)  # Khoảng thời gian = thời gian nắm giữ
         be = _find_breakeven_price(
             K, T_remain, cw["r"], sigma, cr,
             cw["option_type"], cw.get("q", 0.0), ref_price, S,
@@ -542,23 +541,23 @@ def _render_holding_analysis(analyzer, cw):
                 pop = _norm.cdf(-d2_be) * 100
         else:
             pop = 0
-        pop_row[f"{p}d"] = f"{pop:.1f}%"
+        pop_row[f"{p} ngày"] = f"{pop:.1f}%"
     rows.append(pop_row)
 
     df = pd.DataFrame(rows)
 
-    table_container("Chỉ Số Theo Thời Gian Nắm Giữ", badge=f"{len(periods)} periods")
+    table_container("Chỉ Số Theo Thời Gian Nắm Giữ", badge=f"{len(periods)} giai đoạn")
     st.dataframe(df, use_container_width=True, hide_index=True)
     table_container_end()
 
 
 # ============================================================
-# 6. CUSTOM SCENARIO BUILDER
+# 6. TỰ TẠO KỊCH BẢN
 # ============================================================
 
 def _render_custom_scenario(analyzer, cw):
-    """User nhập DeltaS%, DIV points, Holding days → output chi tiết."""
-    section_title("🔧", "Custom Scenario Builder")
+    """Người dùng nhập % thay đổi giá, điểm IV, số ngày nắm giữ → kết quả chi tiết."""
+    section_title("🔧", "Tự Tạo Kịch Bản")
 
     S = cw["S"]
     K = cw["K"]
@@ -571,14 +570,14 @@ def _render_custom_scenario(analyzer, cw):
 
     with col1:
         ds_pct = st.slider(
-            "Thay đổi giá CS (%)",
+            "Thay đổi giá cơ sở (%)",
             min_value=-30.0, max_value=30.0,
             value=0.0, step=0.5,
             key="custom_ds",
         )
     with col2:
         div_pts = st.slider(
-            "Thay đổi IV (points)",
+            "Thay đổi biến động ngầm định (điểm)",
             min_value=-15.0, max_value=15.0,
             value=0.0, step=0.5,
             key="custom_div",
@@ -586,7 +585,7 @@ def _render_custom_scenario(analyzer, cw):
     with col3:
         hold_max = max(min(max_days - 1, 90), 1)
         hold = st.slider(
-            "Ngày nắm giữ",
+            "Số ngày nắm giữ",
             min_value=0, max_value=hold_max,
             value=0, step=1,
             key="custom_hold",
@@ -596,7 +595,7 @@ def _render_custom_scenario(analyzer, cw):
     new_sigma = max(sigma + div_pts / 100.0, 0.01)
     T_new = max((max_days - hold) / 365.0, 0.001)
 
-    # Current values
+    # Giá trị hiện tại
     model_current = BlackScholesModel(
         S, K, cw["T"], cw["r"], sigma,
         cw["option_type"], q=cw.get("q", 0.0),
@@ -604,7 +603,7 @@ def _render_custom_scenario(analyzer, cw):
     greeks_current = GreeksCalculator(model_current, cr)
     current_greeks = greeks_current.all_greeks()
 
-    # New scenario values
+    # Giá trị kịch bản mới
     model_new = BlackScholesModel(
         new_S, K, T_new, cw["r"], new_sigma,
         cw["option_type"], q=cw.get("q", 0.0),
@@ -617,17 +616,17 @@ def _render_custom_scenario(analyzer, cw):
     pnl_pct = (pnl / cw_price * 100) if cw_price > 0 else 0
     pnl_color = "#22C55E" if pnl >= 0 else "#EF4444"
 
-    # Display results
+    # Hiển thị kết quả
     st.markdown(
         f'<div style="text-align:center;padding:12px 0;">'
         f'<span style="font-size:18px;color:#8896AB;">Kịch bản: </span>'
         f'<span style="font-size:18px;color:#F1F5F9;font-weight:700;">'
-        f'CS {ds_pct:+.1f}%, IV {div_pts:+.1f}pts, {hold}d</span>'
+        f'Cơ sở {ds_pct:+.1f}%, Biến động {div_pts:+.1f} điểm, {hold} ngày</span>'
         f'</div>',
         unsafe_allow_html=True,
     )
 
-    # Result cards
+    # Thẻ kết quả
     r1, r2, r3, r4 = st.columns(4)
 
     with r1:
@@ -638,55 +637,55 @@ def _render_custom_scenario(analyzer, cw):
             delta=f"từ {format_vnd(cw_price)} đ",
         )
     with r2:
-        colored_metric("P&L (%)", f"{pnl_pct:+.1f}%", color=pnl_color)
+        colored_metric("Lãi/Lỗ (%)", f"{pnl_pct:+.1f}%", color=pnl_color)
     with r3:
-        colored_metric("P&L (đ/CW)", f"{pnl:+,.0f} đ", color=pnl_color)
+        colored_metric("Lãi/Lỗ (đ/CW)", f"{pnl:+,.0f} đ", color=pnl_color)
     with r4:
         qty = cw.get("quantity")
         entry_p = cw.get("entry_price")
         if qty and entry_p and qty > 0 and entry_p > 0:
             pnl_total = (cw_new - entry_p) * qty
             t_color = "#22C55E" if pnl_total >= 0 else "#EF4444"
-            colored_metric("P&L Vị Thế", f"{pnl_total:+,.0f} đ", color=t_color)
+            colored_metric("Lãi/Lỗ Vị Thế", f"{pnl_total:+,.0f} đ", color=t_color)
         else:
-            colored_metric("Giá CS Mới", f"{format_vnd(new_S)} đ", color="#3B82F6")
+            colored_metric("Giá Cổ Sở Mới", f"{format_vnd(new_S)} đ", color="#3B82F6")
 
-    # Greeks comparison table
+    # Bảng so sánh chỉ số Hy Lạp
     section_divider()
 
     compare_data = [
         {
-            "Chỉ Số": "Delta",
+            "Chỉ Số": "Delta (Δ)",
             "Hiện Tại": f"{current_greeks['delta']:.4f}",
             "Kịch Bản": f"{new_greeks['delta']:.4f}",
             "Thay Đổi": f"{new_greeks['delta'] - current_greeks['delta']:+.4f}",
         },
         {
-            "Chỉ Số": "Gamma",
+            "Chỉ Số": "Gamma (Γ)",
             "Hiện Tại": f"{current_greeks['gamma']:.6f}",
             "Kịch Bản": f"{new_greeks['gamma']:.6f}",
             "Thay Đổi": f"{new_greeks['gamma'] - current_greeks['gamma']:+.6f}",
         },
         {
-            "Chỉ Số": "Theta",
+            "Chỉ Số": "Theta (Θ)",
             "Hiện Tại": f"{current_greeks['theta']:.4f}",
             "Kịch Bản": f"{new_greeks['theta']:.4f}",
             "Thay Đổi": f"{new_greeks['theta'] - current_greeks['theta']:+.4f}",
         },
         {
-            "Chỉ Số": "Vega",
+            "Chỉ Số": "Vega (ν)",
             "Hiện Tại": f"{current_greeks['vega']:.4f}",
             "Kịch Bản": f"{new_greeks['vega']:.4f}",
             "Thay Đổi": f"{new_greeks['vega'] - current_greeks['vega']:+.4f}",
         },
         {
-            "Chỉ Số": "IV (input)",
+            "Chỉ Số": "Biến động ngầm định",
             "Hiện Tại": format_pct(sigma * 100),
             "Kịch Bản": format_pct(new_sigma * 100),
-            "Thay Đổi": f"{div_pts:+.1f} pts",
+            "Thay Đổi": f"{div_pts:+.1f} điểm",
         },
     ]
 
-    table_container("Greeks: Hiện Tại vs Kịch Bản", badge="5 chỉ số")
+    table_container("Chỉ Số Hy Lạp: Hiện Tại và Kịch Bản", badge="5 chỉ số")
     st.dataframe(pd.DataFrame(compare_data), use_container_width=True, hide_index=True)
     table_container_end()

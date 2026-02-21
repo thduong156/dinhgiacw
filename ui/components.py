@@ -25,6 +25,14 @@ def section_title(icon: str, text: str):
     )
 
 
+def _clear_money_cache(prefix: str):
+    """Xoá cache _money_input khi đóng/mở form edit để tránh dữ liệu cũ."""
+    suffixes = ["_S", "_K", "_cw_price", "_entry_price", "_quantity"]
+    for suffix in suffixes:
+        st.session_state.pop(f"_money_{prefix}{suffix}", None)
+        st.session_state.pop(f"{prefix}{suffix}", None)
+
+
 def _money_input(label, default, min_val, max_val, step, key, help_text=""):
     """
     Number input hiển thị dấu phẩy ngay trong ô nhập.
@@ -225,7 +233,7 @@ def _render_position_pnl_html(cw: dict) -> str:
         f'<span style="font-size:0.65rem; color:#64748B; text-transform:uppercase; '
         f'letter-spacing:0.5px;">Vị thế {pnl_icon}</span>'
         f'<span style="font-size:0.78rem; font-weight:800; color:{pnl_color}; '
-        f'font-family:monospace;">{pnl_sign}{format_vnd(pnl_vnd)}đ</span>'
+        f"font-family:'Fira Code',monospace;\">{pnl_sign}{format_vnd(pnl_vnd)}đ</span>"
         f'</div>'
         f'<div style="display:flex; justify-content:space-between; font-size:0.65rem; '
         f'color:#94A3B8;">'
@@ -305,7 +313,7 @@ def _render_selected_dashboard(cw: dict):
         f'<div style="display:flex; justify-content:space-between; margin-top:6px; '
         f'padding:0 4px;">'
         f'<span style="font-size:0.68rem; color:#64748B;">'
-        f'CR: <b style="color:#E2E8F0; font-family:monospace;">{cr:.1f}</b>'
+        f"CR: <b style=\"color:#E2E8F0; font-family:'Fira Code',monospace;\">{cr:.1f}</b>"
         f'</span>'
         f'</div>'
         + position_html
@@ -417,6 +425,8 @@ def _render_cw_card(cw: dict, index: int):
     with col_edit:
         if st.button("✏️ Sửa", key=f"edit_cw_{index}", use_container_width=True):
             st.session_state[editing_key] = not is_editing
+            # Clear money-input cache so form shows fresh data
+            _clear_money_cache(f"edit{index}")
             st.rerun()
     with col_del:
         if st.button("❌ Xoá", key=f"remove_cw_{index}", use_container_width=True):
@@ -531,11 +541,11 @@ def _render_edit_cw_form(cw: dict, index: int):
                 )
             with pos_c2:
                 _existing_qty = cw.get("quantity") or 0
-                quantity = st.number_input(
-                    "Số lượng", value=int(_existing_qty), min_value=0, max_value=10_000_000,
-                    step=100, key=f"{prefix}_quantity",
-                    help="Số CW đang nắm giữ",
-                )
+                quantity = int(_money_input(
+                    "Số lượng", _existing_qty, 0, 10_000_000, 100,
+                    key=f"{prefix}_quantity",
+                    help_text="Số CW đang nắm giữ",
+                ))
 
         col_save, col_cancel = st.columns(2)
         with col_save:
@@ -562,12 +572,14 @@ def _render_edit_cw_form(cw: dict, index: int):
                     portfolio[index] = updated
                     st.session_state["cw_portfolio"] = portfolio
                     st.session_state[editing_key] = False
+                    _clear_money_cache(prefix)
                     _auto_save_portfolio()
                     st.rerun()
 
         with col_cancel:
             if st.button("✖ Huỷ", key=f"{prefix}_cancel", use_container_width=True):
                 st.session_state[editing_key] = False
+                _clear_money_cache(prefix)
                 st.rerun()
 
 
@@ -616,11 +628,11 @@ def _render_add_cw_form():
                     help_text="Giá trung bình mua vào (0 = chưa mua)",
                 )
             with pos_c2:
-                quantity = st.number_input(
-                    "Số lượng", value=0, min_value=0, max_value=10_000_000,
-                    step=100, key="add_quantity",
-                    help="Số lượng CW đang nắm giữ (0 = chưa mua)",
-                )
+                quantity = int(_money_input(
+                    "Số lượng", 0, 0, 10_000_000, 100,
+                    key="add_quantity",
+                    help_text="Số lượng CW đang nắm giữ (0 = chưa mua)",
+                ))
 
         if st.button("✅ Xác Nhận Thêm CW", use_container_width=True, key="confirm_add_cw"):
             if ma_cw:
@@ -642,6 +654,10 @@ def _render_add_cw_form():
                 }
                 st.session_state["cw_portfolio"].append(new_entry)
                 st.session_state["_show_add_form"] = False
+                # Clear money-input cache for add form
+                for suffix in ["_S", "_K", "_cw_price", "_entry_price", "_quantity"]:
+                    st.session_state.pop(f"_money_add{suffix}", None)
+                    st.session_state.pop(f"add{suffix}", None)
                 _auto_save_portfolio()
                 st.rerun()
             else:

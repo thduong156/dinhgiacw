@@ -1,6 +1,6 @@
 {
   "portfolio_name": "Default",
-  "last_modified": "2026-02-21T10:44:43.485684",
+  "last_modified": "2026-02-21T16:11:40.187087",
   "cw_list": [
     {
       "ma_cw": "cmwg2604",
@@ -16,9 +16,9 @@
       "option_type": "call",
       "maturity_date": "26/10/2026",
       "days_remaining": 247,
-      "issuer": "",
-      "entry_price": null,
-      "quantity": null
+      "issuer": "ACBS",
+      "entry_price": 2000.0,
+      "quantity": 10000
     },
     {
       "ma_cw": "cmwg2610",

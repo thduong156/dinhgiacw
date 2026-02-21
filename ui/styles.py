@@ -6,7 +6,7 @@ def inject_custom_css():
     st.markdown("""
     <style>
         /* ===== GOOGLE FONTS ===== */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Fira+Code:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap');
 
         /*
          * COLOR PALETTE — High Contrast Dark
@@ -24,7 +24,22 @@ def inject_custom_css():
 
         /* ===== GLOBAL ===== */
         html, body, [class*="css"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Crimson Pro', Georgia, serif;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        /* Enable Fira Code math ligatures */
+        code, pre, [class*="mono"], .sb-dash-cw-name, .sb-metric-mini-value,
+        .sb-time-bar-value, .sb-cw-card-name, .sb-cw-card-stat, .sb-cw-card-pnl,
+        .custom-metric-value, .signal-score, .score-card-value, .best-card-score,
+        .medal-card-score, .batch-stat-card-value, .daily-stat-card-value,
+        .table-container-badge, .sb-portfolio-count-badge .count-num,
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+            font-feature-settings: "liga" 1, "calt" 1;
+            -webkit-font-feature-settings: "liga" 1, "calt" 1;
         }
 
         .stApp {
@@ -43,11 +58,12 @@ def inject_custom_css():
         /* ===== HEADER ===== */
         .main-header {
             font-size: 2rem;
-            font-weight: 800;
+            font-weight: 700;
+            font-family: 'Playfair Display', Georgia, serif;
             color: #F0F4FF;
             text-align: center;
             padding: 0.4rem 0 0.3rem 0;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             text-transform: uppercase;
         }
 
@@ -100,9 +116,10 @@ def inject_custom_css():
         }
         .sb-brand-title {
             font-size: 1.15rem;
-            font-weight: 800;
+            font-weight: 700;
+            font-family: 'Playfair Display', Georgia, serif;
             color: #F0F4FF;
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
             margin-bottom: 2px;
         }
@@ -195,7 +212,7 @@ def inject_custom_css():
             font-size: 0.95rem;
             font-weight: 700;
             color: #F0F4FF;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
         }
         .sb-dash-type-badge {
             display: inline-flex;
@@ -277,7 +294,7 @@ def inject_custom_css():
             font-size: 0.88rem;
             font-weight: 700;
             color: #F0F4FF;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
         }
 
         /* Time remaining progress bar */
@@ -298,7 +315,7 @@ def inject_custom_css():
         .sb-time-bar-value {
             font-size: 0.72rem;
             font-weight: 700;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             color: #B8C2DB;
         }
         .sb-time-bar {
@@ -338,7 +355,7 @@ def inject_custom_css():
         }
         .sb-portfolio-count-badge .count-num {
             font-weight: 800;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             font-size: 0.78rem;
             color: #F0F4FF;
         }
@@ -382,7 +399,7 @@ def inject_custom_css():
             font-weight: 700;
             font-size: 0.82rem;
             color: #F0F4FF;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             padding-left: 6px;
         }
         .sb-cw-card-badge {
@@ -414,12 +431,12 @@ def inject_custom_css():
             padding: 2px 6px;
             background: #222633;
             border-radius: 4px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
         }
         .sb-cw-card-pnl {
             font-size: 0.65rem;
             font-weight: 700;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             padding: 3px 6px;
             margin-top: 4px;
         }
@@ -458,7 +475,7 @@ def inject_custom_css():
             color: #F0F4FF !important;
             font-size: 1.25rem !important;
             font-weight: 700 !important;
-            font-family: 'SF Mono', 'Fira Code', 'Inter', monospace !important;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace !important;
         }
         div[data-testid="stMetric"] [data-testid="stMetricDelta"] svg { display: inline; }
 
@@ -486,6 +503,7 @@ def inject_custom_css():
             background: #FFFFFF !important;
             color: #0E1117 !important;
             font-weight: 700 !important;
+            font-family: 'Crimson Pro', Georgia, serif !important;
             box-shadow: 0 2px 10px rgba(255,255,255,0.15);
         }
 
@@ -558,7 +576,8 @@ def inject_custom_css():
         }
         .section-title-text {
             font-size: 1.15rem;
-            font-weight: 700;
+            font-weight: 600;
+            font-family: 'Playfair Display', Georgia, serif;
             color: #F0F4FF;
             letter-spacing: 0.3px;
         }
@@ -612,7 +631,7 @@ def inject_custom_css():
         .custom-metric-value {
             font-size: 1.25rem;
             font-weight: 700;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
         }
 
         /* ===== EXPANDER ===== */
@@ -685,7 +704,7 @@ def inject_custom_css():
             font-size: 0.75rem;
             color: #7A84A0;
             margin-top: 4px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
         }
 
         /* ===== QUICK SUMMARY ===== */
@@ -705,7 +724,7 @@ def inject_custom_css():
         .signal-score {
             font-size: 3.2rem;
             font-weight: 800;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             line-height: 1;
             margin-bottom: 6px;
             color: #F0F4FF;
@@ -774,7 +793,7 @@ def inject_custom_css():
         .score-card-value {
             font-size: 1.3rem;
             font-weight: 700;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             color: #F0F4FF;
         }
         .score-card-bar {
@@ -805,7 +824,7 @@ def inject_custom_css():
         .best-card-score {
             font-size: 3.2rem;
             font-weight: 800;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             line-height: 1;
             color: #F0F4FF;
         }
@@ -847,7 +866,7 @@ def inject_custom_css():
         .medal-card-score {
             font-size: 2rem;
             font-weight: 800;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             margin: 8px 0;
             color: #F0F4FF;
         }
@@ -1005,7 +1024,7 @@ def inject_custom_css():
             background: #222633;
             padding: 3px 10px;
             border-radius: 8px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             border: 1px solid #2E3348;
         }
 
@@ -1070,7 +1089,7 @@ def inject_custom_css():
             font-size: 0.68rem;
             color: #444C66;
             margin-top: 8px;
-            font-style: italic;
+            font-weight: 700;
             letter-spacing: 0.3px;
         }
 
@@ -1153,7 +1172,7 @@ def inject_custom_css():
         .batch-stat-card-value {
             font-size: 1.8rem;
             font-weight: 800;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             line-height: 1;
             margin-bottom: 4px;
             color: #F0F4FF;
@@ -1237,7 +1256,7 @@ def inject_custom_css():
         .daily-stat-card-value {
             font-size: 1.3rem;
             font-weight: 800;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: 'Fira Code', 'JetBrains Mono', monospace;
             line-height: 1.2;
             margin-bottom: 6px;
             color: #F0F4FF;

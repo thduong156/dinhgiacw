@@ -95,7 +95,7 @@ st.markdown(
     'Công cụ chỉ mang tính chất tham khảo, sử dụng mô hình Black-Scholes. '
     'Không phải là khuyến nghị đầu tư.'
     '</div>'
-    '<div class="app-footer-v2-designer">Thiết kế bởi thduong156</div>'
+    '<div class="app-footer-v2-designer">Thiết kế bởi THDUONG156</div>'
     '</div>',
     unsafe_allow_html=True,
 )

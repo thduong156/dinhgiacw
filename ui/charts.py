@@ -19,7 +19,7 @@ COLORS = {
     "blue": "#3B82F6",
 }
 
-CHART_FONT = dict(family="Inter, -apple-system, sans-serif", size=12, color="#CBD5E0")
+CHART_FONT = dict(family="Crimson Pro, Georgia, serif", size=12, color="#CBD5E0")
 
 COMMON_LAYOUT = dict(
     template=CHART_TEMPLATE,
@@ -30,7 +30,7 @@ COMMON_LAYOUT = dict(
     hoverlabel=dict(
         bgcolor="#1A2332",
         font_size=13,
-        font_family="Inter, monospace",
+        font_family="Fira Code, monospace",
         bordercolor="rgba(255,107,53,0.3)",
     ),
 )
@@ -246,7 +246,7 @@ def create_scenario_heatmap(scenario_data, price_changes, vol_changes):
         colorscale="RdYlGn",
         text=[[f"{v:,.0f}" for v in row] for row in z_data],
         texttemplate="%{text}",
-        textfont={"size": 11, "family": "Inter, monospace"},
+        textfont={"size": 11, "family": "Fira Code, monospace"},
         hovertemplate=(
             "Thay đổi giá: %{y}<br>"
             "Thay đổi vol: %{x}<br>"
@@ -1157,7 +1157,7 @@ def create_backtesting_chart(records):
                 xref="paper", yref="paper",
                 x=0.02, y=0.97,
                 showarrow=False,
-                font=dict(size=11, color=diff_color, family="Inter, monospace"),
+                font=dict(size=11, color=diff_color, family="Fira Code, monospace"),
                 bgcolor="rgba(10,13,18,0.85)",
                 bordercolor=diff_color,
                 borderwidth=1,
@@ -1201,7 +1201,7 @@ def create_pnl_heatmap(z_data, y_labels, x_labels, be_y=None, current_marker=Non
         zmid=0,
         text=[[f"{v:+,.0f}" for v in row] for row in z_data],
         texttemplate="%{text}",
-        textfont={"size": 9, "family": "Inter, monospace"},
+        textfont={"size": 9, "family": "Fira Code, monospace"},
         hovertemplate=(
             "Giá CS: %{y}<br>"
             "Ngày còn lại: %{x}<br>"
@@ -1332,7 +1332,7 @@ def create_vol_shock_heatmap(z_data, price_labels, iv_labels):
         zmid=0,
         text=[[f"{v:+,.0f}" for v in row] for row in z_data],
         texttemplate="%{text}",
-        textfont={"size": 10, "family": "Inter, monospace"},
+        textfont={"size": 10, "family": "Fira Code, monospace"},
         hovertemplate=(
             "ΔGiá CS: %{y}<br>"
             "ΔIV: %{x}<br>"

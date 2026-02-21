@@ -285,7 +285,7 @@ def render_daily_tracker_tab():
         if input_date is None:
             st.error("❌ Định dạng ngày không hợp lệ. Nhập **DD/MM/YY** (VD: 18/02/26)")
         elif input_S <= 0 or input_cw_price <= 0:
-            st.error("❌ Giá cổ sở và giá CW phải lớn hơn 0.")
+            st.error("❌ Giá cơ sở và giá CW phải lớn hơn 0.")
         else:
             sigma_decimal = input_sigma_pct / 100.0
             date_str = input_date.strftime("%Y-%m-%d")
