@@ -1,0 +1,54 @@
+{
+  "portfolio_name": "Default",
+  "last_modified": "2026-02-21T10:44:43.485684",
+  "cw_list": [
+    {
+      "ma_cw": "cmwg2604",
+      "ma_co_so": "mwg",
+      "S": 92800.0,
+      "K": 85000.0,
+      "T": 0.6767123287671233,
+      "r": 0.045,
+      "sigma": 0.35,
+      "q": 0.0,
+      "cr": 7.0,
+      "cw_price": 2220.0,
+      "option_type": "call",
+      "maturity_date": "26/10/2026",
+      "days_remaining": 247,
+      "issuer": "",
+      "entry_price": null,
+      "quantity": null
+    },
+    {
+      "ma_cw": "cmwg2610",
+      "ma_co_so": "mwg",
+      "S": 92800.0,
+      "K": 102000.0,
+      "T": 0.8794520547945206,
+      "r": 0.045,
+      "sigma": 0.35,
+      "cr": 8.0,
+      "cw_price": 1480.0,
+      "option_type": "call",
+      "maturity_date": "08/01/2027",
+      "days_remaining": 321,
+      "q": 0.0
+    },
+    {
+      "ma_cw": "cmwg2609",
+      "ma_co_so": "mwg",
+      "S": 92800.0,
+      "K": 90000.0,
+      "T": 0.6027397260273972,
+      "r": 0.045,
+      "sigma": 0.35,
+      "cr": 5.0,
+      "cw_price": 3080.0,
+      "option_type": "call",
+      "maturity_date": "29/09/2026",
+      "days_remaining": 220,
+      "q": 0.0
+    }
+  ]
+}

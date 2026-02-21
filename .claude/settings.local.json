@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3:*)",
+      "Bash(open:*)",
+      "Bash(curl:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "Bash(pgrep:*)",
+      "Bash(for f in app.py core/black_scholes.py core/greeks.py core/implied_volatility.py core/warrant.py data/validators.py data/csv_handler.py ui/styles.py ui/components.py ui/charts.py ui/tab_pricing.py ui/tab_greeks.py ui/tab_iv.py ui/tab_comparison.py ui/tab_forecast.py ui/tab_batch.py ui/tab_cw_compare.py)",
+      "Bash(do python3 -m py_compile \"$f\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(grep -rn \"format_pct\" ui/*.py)",
+      "Bash(find:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(pip show:*)",
+      "Bash(xargs:*)",
+      "Bash(for f in core/warrant.py core/markowitz.py core/scoring.py data/portfolio_manager.py data/daily_tracker.py ui/components.py ui/styles.py ui/charts.py ui/tab_pricing.py ui/tab_greeks.py ui/tab_iv.py ui/tab_comparison.py ui/tab_forecast.py ui/tab_batch.py ui/tab_cw_compare.py ui/tab_recommend.py ui/tab_daily_tracker.py app.py)",
+      "Bash(for f in ui/tab_daily_tracker.py ui/charts.py ui/styles.py data/daily_tracker.py)",
+      "Bash(for f in app.py core/scoring.py core/warrant.py core/markowitz.py core/greeks.py core/iv_solver.py data/daily_tracker.py data/portfolio.py ui/components.py ui/tab_pricing.py ui/tab_greeks.py ui/tab_iv.py ui/tab_comparison.py ui/tab_forecast.py ui/tab_analysis.py ui/tab_compare_cw.py ui/tab_recommend.py)",
+      "Bash(for f in core/__init__.py data/__init__.py ui/__init__.py core/black_scholes.py core/implied_volatility.py data/validators.py data/csv_handler.py data/portfolio_manager.py ui/tab_batch.py ui/tab_cw_compare.py)",
+      "Bash(for f in ui/tab_pricing.py ui/tab_greeks.py ui/tab_iv.py ui/tab_comparison.py ui/tab_forecast.py ui/tab_batch.py ui/tab_cw_compare.py ui/tab_recommend.py ui/tab_daily_tracker.py ui/components.py ui/charts.py data/daily_tracker.py app.py)",
+      "Bash(while read f)",
+      "Bash(pip3 list:*)"
+    ]
+  }
+}
