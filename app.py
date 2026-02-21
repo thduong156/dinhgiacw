@@ -51,7 +51,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📈 Định Giá CW",
     "📋 Phân Tích Hàng Loạt",
     "🔀 So Sánh CW",
-    "📊 Chỉ Số Greeks",
+    "📊 Chỉ Số Hy Lạp",
     "🏅 Đề Xuất CW",
     "🔮 Dự Báo & Đòn Bẩy",
     "📉 Biến Động Ngầm Định",
