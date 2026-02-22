@@ -478,13 +478,23 @@ def inject_custom_css():
         div[data-testid="stMetric"] [data-testid="stMetricDelta"] svg { display: inline; }
 
         /* ===== TABS ===== */
+        /* Container bọc ngoài — relative để chứa mũi tên */
         .stTabs [data-baseweb="tab-list"] {
             gap: 3px;
             background: #1A1D27;
             border-radius: 14px;
-            padding: 5px;
+            padding: 5px 36px;
             border: 1px solid #2E3348;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none;          /* Firefox */
+            -ms-overflow-style: none;       /* IE/Edge */
+            position: relative;
         }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            display: none;                  /* Chrome/Safari */
+        }
+
         .stTabs [data-baseweb="tab"] {
             border-radius: 11px;
             padding: 10px 16px;
@@ -493,6 +503,8 @@ def inject_custom_css():
             font-size: 0.82rem;
             color: #7A84A0;
             transition: all 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .stTabs [data-baseweb="tab"]:hover {
             background-color: #222633;
@@ -1294,4 +1306,57 @@ def inject_custom_css():
             .daily-stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
+    """, unsafe_allow_html=True)
+
+    # ── Tab scroll arrows ──
+    st.markdown("""
+    <script>
+    (function() {
+        function injectArrows() {
+            const tabList = document.querySelector('[data-baseweb="tab-list"]');
+            if (!tabList || tabList.dataset.arrowsInjected) return;
+            tabList.dataset.arrowsInjected = '1';
+
+            const wrapper = tabList.parentElement;
+            wrapper.style.position = 'relative';
+
+            const arrowStyle = `
+                position: absolute; top: 50%; transform: translateY(-50%);
+                width: 28px; height: 28px; border-radius: 50%;
+                background: #1A1D27; border: 1px solid #444C66;
+                color: #B8C2DB; font-size: 14px; cursor: pointer;
+                display: flex; align-items: center; justify-content: center;
+                z-index: 10; transition: all 0.2s ease;
+                font-family: 'Noto Sans Symbols 2', sans-serif;
+            `;
+
+            const leftBtn = document.createElement('button');
+            leftBtn.innerHTML = '‹';
+            leftBtn.style.cssText = arrowStyle + 'left: 4px;';
+            leftBtn.onmouseover = () => { leftBtn.style.background = '#2E3348'; leftBtn.style.color = '#F0F4FF'; };
+            leftBtn.onmouseout  = () => { leftBtn.style.background = '#1A1D27'; leftBtn.style.color = '#B8C2DB'; };
+            leftBtn.onclick = () => tabList.scrollBy({ left: -200, behavior: 'smooth' });
+
+            const rightBtn = document.createElement('button');
+            rightBtn.innerHTML = '›';
+            rightBtn.style.cssText = arrowStyle + 'right: 4px;';
+            rightBtn.onmouseover = () => { rightBtn.style.background = '#2E3348'; rightBtn.style.color = '#F0F4FF'; };
+            rightBtn.onmouseout  = () => { rightBtn.style.background = '#1A1D27'; rightBtn.style.color = '#B8C2DB'; };
+            rightBtn.onclick = () => tabList.scrollBy({ left: 200, behavior: 'smooth' });
+
+            wrapper.appendChild(leftBtn);
+            wrapper.appendChild(rightBtn);
+        }
+
+        // Retry until Streamlit tabs render
+        let attempts = 0;
+        const interval = setInterval(() => {
+            injectArrows();
+            attempts++;
+            if (document.querySelector('[data-baseweb="tab-list"][data-arrows-injected]') || attempts > 30) {
+                clearInterval(interval);
+            }
+        }, 300);
+    })();
+    </script>
     """, unsafe_allow_html=True)
