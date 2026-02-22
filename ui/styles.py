@@ -6,7 +6,7 @@ def inject_custom_css():
     st.markdown("""
     <style>
         /* ===== GOOGLE FONTS ===== */
-        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Fira+Code:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+Symbols+2&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap');
 
         /*
          * COLOR PALETTE — High Contrast Dark
@@ -24,7 +24,7 @@ def inject_custom_css():
 
         /* ===== GLOBAL ===== */
         html, body, [class*="css"] {
-            font-family: 'Crimson Pro', Georgia, serif;
+            font-family: 'Crimson Pro', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', Georgia, serif;
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -112,6 +112,7 @@ def inject_custom_css():
             background: #FFFFFF;
             box-shadow: 0 6px 20px rgba(255,255,255,0.12);
             font-size: 1.5rem;
+            font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
             margin-bottom: 10px;
         }
         .sb-brand-title {
@@ -443,7 +444,7 @@ def inject_custom_css():
 
         /* ===== EMPTY STATE ===== */
         .sb-empty-state { text-align: center; padding: 24px 12px; }
-        .sb-empty-state-icon { font-size: 2rem; margin-bottom: 8px; opacity: 0.4; }
+        .sb-empty-state-icon { font-size: 2rem; margin-bottom: 8px; opacity: 0.4; font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif; }
         .sb-empty-state-title {
             font-size: 0.82rem; font-weight: 600;
             color: #B8C2DB; margin-bottom: 4px;
@@ -491,6 +492,7 @@ def inject_custom_css():
             border-radius: 11px;
             padding: 10px 16px;
             font-weight: 500;
+            font-family: 'Crimson Pro', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', Georgia, serif;
             font-size: 0.82rem;
             color: #7A84A0;
             transition: all 0.2s ease;
@@ -571,13 +573,14 @@ def inject_custom_css():
             align-items: center;
             justify-content: center;
             font-size: 1.1rem;
+            font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
             box-shadow: 0 4px 12px rgba(255,255,255,0.12);
             flex-shrink: 0;
         }
         .section-title-text {
             font-size: 1.15rem;
             font-weight: 600;
-            font-family: 'Playfair Display', Georgia, serif;
+            font-family: 'Playfair Display', 'Noto Sans Symbols 2', Georgia, serif;
             color: #F0F4FF;
             letter-spacing: 0.3px;
         }
@@ -983,7 +986,7 @@ def inject_custom_css():
             max-width: 420px;
             margin: 40px auto;
         }
-        .tab-empty-state-icon { font-size: 3.5rem; margin-bottom: 16px; opacity: 0.35; }
+        .tab-empty-state-icon { font-size: 3.5rem; margin-bottom: 16px; opacity: 0.35; font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif; }
         .tab-empty-state-title {
             font-size: 1.1rem;
             font-weight: 700;
