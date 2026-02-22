@@ -1541,5 +1541,3 @@ def create_mc_contribution(
     )
     _apply_axis_style(fig, "E[PnL] (VNĐ)", "")
     return fig
-
-    return fig
