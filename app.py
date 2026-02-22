@@ -17,6 +17,7 @@ from ui.tab_iv import render_iv_tab
 from ui.tab_daily_tracker import render_daily_tracker_tab
 from ui.tab_scenario import render_scenario_tab
 from ui.tab_monte_carlo import render_monte_carlo_tab
+from ui.tab_hedging import render_hedging_tab
 from data.portfolio_manager import load_portfolio, deserialize_cw_entry
 
 # Page config
@@ -48,7 +49,7 @@ if "cw_portfolio" not in st.session_state:
 selected_cw = parameter_sidebar()
 
 # Tabs — workflow order: Định giá → Phân tích loạt → So sánh → Greeks → Đề xuất → Dự báo → IV → Kịch bản → Theo dõi
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "◈ Định Giá CW",
     "≡ Phân Tích Hàng Loạt",
     "⇌ So Sánh CW",
@@ -59,6 +60,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "⊕ Kịch Bản & Stress Test",
     "⊡ Theo Dõi Hàng Ngày",
     "∿ Monte Carlo",
+    "⊘ Phòng Hộ",
 ])
 
 with tab1:
@@ -90,6 +92,9 @@ with tab9:
 
 with tab10:
     render_monte_carlo_tab()
+
+with tab11:
+    render_hedging_tab()
 
 # Footer
 st.markdown(

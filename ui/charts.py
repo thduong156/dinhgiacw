@@ -1541,3 +1541,204 @@ def create_mc_contribution(
     )
     _apply_axis_style(fig, "E[PnL] (VNĐ)", "")
     return fig
+
+
+# ── Hedging Charts ───────────────────────────────────────────────
+
+
+def create_hedging_payoff_chart(payoff_data: dict) -> go.Figure:
+    """
+    Biểu đồ payoff tổng hợp CP + CW.
+    3 đường: Stock PnL, CW PnL, Total PnL.
+    """
+    prices = payoff_data["prices"]
+    stock_pnl = payoff_data["stock_pnl"]
+    cw_pnl = payoff_data["cw_pnl"]
+    total_pnl = payoff_data["total_pnl"]
+
+    fig = go.Figure()
+
+    # Stock PnL
+    fig.add_trace(go.Scatter(
+        x=prices, y=stock_pnl,
+        name="PnL Cổ Phiếu",
+        line=dict(color=COLORS["blue"], width=1.5, dash="dot"),
+        hovertemplate="S = %{x:,.0f}<br>Stock PnL = %{y:,.0f} VNĐ<extra></extra>",
+    ))
+
+    # CW PnL
+    fig.add_trace(go.Scatter(
+        x=prices, y=cw_pnl,
+        name="PnL Chứng Quyền",
+        line=dict(color=COLORS["primary"], width=1.5, dash="dash"),
+        hovertemplate="S = %{x:,.0f}<br>CW PnL = %{y:,.0f} VNĐ<extra></extra>",
+    ))
+
+    # Total PnL (bold white)
+    fig.add_trace(go.Scatter(
+        x=prices, y=total_pnl,
+        name="PnL Tổng Hợp",
+        line=dict(color="#FFFFFF", width=2.5),
+        hovertemplate="S = %{x:,.0f}<br>Tổng PnL = %{y:,.0f} VNĐ<extra></extra>",
+    ))
+
+    # Fill profit zone (green) and loss zone (red)
+    import numpy as np
+    tp = np.array(total_pnl)
+    fig.add_trace(go.Scatter(
+        x=prices, y=[max(0, v) for v in total_pnl],
+        fill="tozeroy",
+        fillcolor="rgba(46,204,113,0.08)",
+        line=dict(width=0),
+        showlegend=False,
+        hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter(
+        x=prices, y=[min(0, v) for v in total_pnl],
+        fill="tozeroy",
+        fillcolor="rgba(231,76,60,0.08)",
+        line=dict(width=0),
+        showlegend=False,
+        hoverinfo="skip",
+    ))
+
+    # Zero line
+    fig.add_hline(y=0, line_dash="solid", line_color="rgba(255,255,255,0.2)", line_width=1)
+
+    # Break-even markers
+    for be in payoff_data.get("break_evens", []):
+        fig.add_vline(
+            x=be, line_dash="dot", line_color=COLORS["accent"], line_width=1,
+            annotation_text=f"BE {be:,.0f}",
+            annotation_position="top",
+            annotation_font=dict(size=10, color=COLORS["accent"]),
+        )
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(text="◇ Payoff Diagram — Danh Mục Tổng Hợp", font=dict(size=14)),
+        height=380,
+        legend=dict(
+            orientation="h", y=-0.18, x=0.5, xanchor="center",
+            font=dict(size=11),
+        ),
+        xaxis_tickformat=",.0f",
+        yaxis_tickformat=",.0f",
+    )
+    _apply_axis_style(fig, "Giá Cổ Phiếu (VNĐ)", "PnL (VNĐ)")
+    return fig
+
+
+def create_delta_exposure_chart(per_ticker: list[dict], target_delta: float = 0.0) -> go.Figure:
+    """
+    Stacked bar: Stock Delta + CW Delta per ticker.
+    """
+    tickers = [t["ticker"] for t in per_ticker]
+    stock_deltas = [t["stock_delta"] for t in per_ticker]
+    cw_deltas = [t["cw_delta"] for t in per_ticker]
+    net_deltas = [t["stock_delta"] + t["cw_delta"] for t in per_ticker]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=tickers, y=stock_deltas,
+        name="Delta Cổ Phiếu",
+        marker_color=COLORS["blue"],
+        hovertemplate="%{x}: Stock Δ = %{y:,.0f}<extra></extra>",
+    ))
+
+    fig.add_trace(go.Bar(
+        x=tickers, y=cw_deltas,
+        name="Delta CW",
+        marker_color=COLORS["primary"],
+        hovertemplate="%{x}: CW Δ = %{y:,.1f}<extra></extra>",
+    ))
+
+    # Net delta line
+    fig.add_trace(go.Scatter(
+        x=tickers, y=net_deltas,
+        name="Net Delta",
+        mode="lines+markers",
+        line=dict(color="#FFFFFF", width=2),
+        marker=dict(size=8, color="#FFFFFF"),
+        hovertemplate="%{x}: Net Δ = %{y:,.1f}<extra></extra>",
+    ))
+
+    # Target delta line
+    if target_delta != 0:
+        fig.add_hline(
+            y=target_delta, line_dash="dash", line_color=COLORS["accent"], line_width=1.5,
+            annotation_text=f"Target Δ = {target_delta:.1f}",
+            annotation_position="top right",
+            annotation_font=dict(size=10, color=COLORS["accent"]),
+        )
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(text="△ Delta Exposure Per Ticker", font=dict(size=14)),
+        height=350,
+        barmode="stack",
+        legend=dict(
+            orientation="h", y=-0.18, x=0.5, xanchor="center",
+            font=dict(size=11),
+        ),
+        yaxis_tickformat=",.0f",
+    )
+    _apply_axis_style(fig, "", "Delta")
+    return fig
+
+
+def create_risk_profile_radar(profiles_data: list[dict]) -> go.Figure:
+    """
+    Radar chart so sánh 5 nhóm rủi ro.
+    Axes: Return, Risk, Net Delta, Leverage, Protection.
+    """
+    categories = ["Lợi nhuận KV", "Rủi ro (σ)", "Net Delta", "Đòn bẩy", "Chi phí BV"]
+
+    fig = go.Figure()
+
+    for p in profiles_data:
+        values = [
+            p.get("expected_return", 0),
+            p.get("risk", 0),
+            p.get("net_delta_norm", 0),
+            p.get("leverage_norm", 0),
+            p.get("protection_cost_norm", 0),
+        ]
+        # Close the polygon
+        values_closed = values + [values[0]]
+        cats_closed = categories + [categories[0]]
+
+        fig.add_trace(go.Scatterpolar(
+            r=values_closed,
+            theta=cats_closed,
+            name=p["name"],
+            line=dict(color=p["color"], width=2),
+            fill="toself",
+            fillcolor=p["color"].replace(")", ",0.08)").replace("rgb", "rgba")
+            if "rgb" in p["color"] else p["color"] + "14",
+        ))
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(text="◎ So Sánh Khẩu Vị Rủi Ro", font=dict(size=14)),
+        height=400,
+        polar=dict(
+            bgcolor=COLORS["bg"],
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                gridcolor=COLORS["grid"],
+                tickfont=dict(size=9, color="#7A84A0"),
+            ),
+            angularaxis=dict(
+                gridcolor=COLORS["grid"],
+                tickfont=dict(size=11, color="#B8C2DB"),
+            ),
+        ),
+        legend=dict(
+            orientation="h", y=-0.12, x=0.5, xanchor="center",
+            font=dict(size=10),
+        ),
+    )
+    return fig

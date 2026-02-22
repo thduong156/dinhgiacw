@@ -1294,6 +1294,141 @@ def inject_custom_css():
             line-height: 1.4;
         }
 
+        /* ===== HEDGING TAB ===== */
+
+        /* Risk profile cards (5 horizontal) */
+        .rp-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 12px 0 20px 0;
+        }
+        .rp-card {
+            background: #1A1D27;
+            border: 1px solid #2E3348;
+            border-radius: 12px;
+            padding: 14px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .rp-card:hover { border-color: #444C66; background: #222633; }
+        .rp-card.rp-selected {
+            border-color: #FFFFFF;
+            border-width: 2px;
+            background: #222633;
+            box-shadow: 0 0 15px rgba(255,255,255,0.08);
+        }
+        .rp-icon {
+            font-size: 1.6rem;
+            margin-bottom: 4px;
+            font-family: 'Fira Code', monospace;
+            font-weight: 700;
+        }
+        .rp-name {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #F0F4FF;
+            margin-bottom: 4px;
+        }
+        .rp-desc {
+            font-size: 0.7rem;
+            color: #7A84A0;
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+        .rp-target {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.68rem;
+            color: #B8C2DB;
+            padding: 3px 6px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* Stock position mini-cards */
+        .stock-pos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .stock-pos-card {
+            background: #1A1D27;
+            border: 1px solid #2E3348;
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .stock-pos-ticker {
+            font-family: 'Fira Code', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #F0F4FF;
+        }
+        .stock-pos-detail {
+            font-size: 0.78rem;
+            color: #7A84A0;
+            margin-top: 4px;
+        }
+        .stock-pos-pnl {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        /* Strategy section cards */
+        .strategy-card {
+            background: #1A1D27;
+            border: 1px solid #2E3348;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 8px 0;
+        }
+        .strategy-card-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #F0F4FF;
+            margin-bottom: 10px;
+        }
+
+        /* Delta gauge indicator */
+        .delta-gauge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+        .delta-gauge-bar {
+            flex: 1;
+            height: 8px;
+            background: #2E3348;
+            border-radius: 4px;
+            position: relative;
+            overflow: visible;
+        }
+        .delta-gauge-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .delta-gauge-label {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.78rem;
+            color: #B8C2DB;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 1024px) {
+            .rp-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .rp-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
             .daily-stats-grid { grid-template-columns: repeat(2, 1fr); }
