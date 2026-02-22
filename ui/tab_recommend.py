@@ -225,10 +225,10 @@ def render_recommend_tab():
     # ===== SO SÁNH TOP 3 =====
     if len(results) >= 3:
         section_divider()
-        section_title("①", "Top 3 CW Được Đề Xuất")
+        section_title("★", "Top 3 CW Được Đề Xuất")
 
         top3_cols = st.columns(3)
-        medals = ["①", "②", "③"]
+        medals = ["I", "II", "III"]
         medal_colors = ["#FFD700", "#C0C0C0", "#CD7F32"]
 
         for idx in range(3):
