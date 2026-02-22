@@ -28,7 +28,7 @@ def _grade_label(score):
 
 def render_recommend_tab():
     """Tab 8: Đề xuất CW tốt nhất — đọc trực tiếp từ portfolio."""
-    section_title("🏅", "Đề Xuất Chứng Quyền Tốt Nhất")
+    section_title("★", "Đề Xuất Chứng Quyền Tốt Nhất")
 
     st.markdown(
         '<div class="info-box">'
@@ -45,7 +45,7 @@ def render_recommend_tab():
 
     if len(portfolio) < 2:
         tab_empty_state(
-            "🏅",
+            "★",
             "Cần Ít Nhất 2 CW Để Đề Xuất",
             f"Hiện có {len(portfolio)} CW trong portfolio. "
             "Thêm CW ở Sidebar → Danh Sách CW Portfolio "
@@ -89,7 +89,7 @@ def render_recommend_tab():
     best = results[0]
 
     # ===== ĐỀ XUẤT SỐ 1 =====
-    section_title("🏆", "Đề Xuất Tốt Nhất")
+    section_title("★", "Đề Xuất Tốt Nhất")
 
     grade_label, grade_color = _grade_label(best["score"])
     a = best["analysis"]
@@ -142,7 +142,7 @@ def render_recommend_tab():
     )
 
     # ===== PHÂN TÍCH CHI TIẾT CW SỐ 1 =====
-    with st.expander("📊 Phân tích chi tiết CW được đề xuất", expanded=True):
+    with st.expander("▪ Phân tích chi tiết CW được đề xuất", expanded=True):
         # Breakdown điểm — 7 tiêu chí
         st.markdown("**Điểm phân rã theo tiêu chí:**")
         max_scores = {"Định giá": 20, "Đòn bẩy": 15, "Delta": 15,
@@ -183,19 +183,19 @@ def render_recommend_tab():
         section_divider()
         reasons = []
         if pd_info["percentage"] < -3:
-            reasons.append(f"✅ Đang Discount {pd_info['percentage']:+.1f}% — giá thấp hơn giá trị thực")
+            reasons.append(f"✓ Đang Discount {pd_info['percentage']:+.1f}% — giá thấp hơn giá trị thực")
         if best_prob > 0.4:
-            reasons.append(f"✅ Xác suất lãi {best_prob*100:.0f}% — khả năng sinh lời tốt")
+            reasons.append(f"✓ Xác suất lãi {best_prob*100:.0f}% — khả năng sinh lời tốt")
         if a["effective_leverage"] >= 3:
-            reasons.append(f"✅ Đòn bẩy hiệu dụng {a['effective_leverage']:.1f}x — khuếch đại tốt")
+            reasons.append(f"✓ Đòn bẩy hiệu dụng {a['effective_leverage']:.1f}x — khuếch đại tốt")
         if abs(a["greeks"]["delta"]) >= 0.3:
-            reasons.append(f"✅ Delta {a['greeks']['delta']:.4f} — nhạy cảm với giá cơ sở")
+            reasons.append(f"✓ Delta {a['greeks']['delta']:.4f} — nhạy cảm với giá cơ sở")
         if inp["days_remaining"] > 90:
-            reasons.append(f"✅ Còn {inp['days_remaining']} ngày — thời gian thoải mái")
+            reasons.append(f"✓ Còn {inp['days_remaining']} ngày — thời gian thoải mái")
         if best_theta_eff > 80:
-            reasons.append(f"✅ Theta Efficiency {best_theta_eff:.0f} ngày — time decay thấp")
+            reasons.append(f"✓ Theta Efficiency {best_theta_eff:.0f} ngày — time decay thấp")
         if abs(a["break_even_change_pct"]) <= 10:
-            reasons.append(f"✅ Hoà vốn gần — chỉ cần thay đổi {abs(a['break_even_change_pct']):.1f}%")
+            reasons.append(f"✓ Hoà vốn gần — chỉ cần thay đổi {abs(a['break_even_change_pct']):.1f}%")
 
         if reasons:
             st.markdown(
@@ -208,11 +208,11 @@ def render_recommend_tab():
         # Cảnh báo
         warnings = []
         if pd_info["percentage"] > 10:
-            warnings.append(f"⚠️ Premium cao {pd_info['percentage']:+.1f}%")
+            warnings.append(f"△ Premium cao {pd_info['percentage']:+.1f}%")
         if inp["days_remaining"] < 60:
-            warnings.append(f"⚠️ Thời gian ngắn — còn {inp['days_remaining']} ngày")
+            warnings.append(f"△ Thời gian ngắn — còn {inp['days_remaining']} ngày")
         if a["effective_leverage"] > 10:
-            warnings.append(f"⚠️ Đòn bẩy rất cao {a['effective_leverage']:.1f}x — rủi ro lớn")
+            warnings.append(f"△ Đòn bẩy rất cao {a['effective_leverage']:.1f}x — rủi ro lớn")
 
         if warnings:
             st.markdown(
@@ -225,10 +225,10 @@ def render_recommend_tab():
     # ===== SO SÁNH TOP 3 =====
     if len(results) >= 3:
         section_divider()
-        section_title("🥇", "Top 3 CW Được Đề Xuất")
+        section_title("①", "Top 3 CW Được Đề Xuất")
 
         top3_cols = st.columns(3)
-        medals = ["🥇", "🥈", "🥉"]
+        medals = ["①", "②", "③"]
         medal_colors = ["#FFD700", "#C0C0C0", "#CD7F32"]
 
         for idx in range(3):
@@ -275,7 +275,7 @@ def render_recommend_tab():
 
     # ===== BẢNG XẾP HẠNG TOÀN BỘ =====
     section_divider()
-    section_title("📋", "Bảng Xếp Hạng Toàn Bộ")
+    section_title("≡", "Bảng Xếp Hạng Toàn Bộ")
 
     table_rows = []
     for rank, r in enumerate(results, 1):
@@ -324,7 +324,7 @@ def render_recommend_tab():
     # Export
     csv_data = result_df.to_csv(index=False).encode("utf-8")
     st.download_button(
-        label="📥 Tải Bảng Xếp Hạng (CSV)",
+        label="↓ Tải Bảng Xếp Hạng (CSV)",
         data=csv_data,
         file_name="de_xuat_chung_quyen.csv",
         mime="text/csv",
@@ -339,7 +339,7 @@ def render_recommend_tab():
     section_divider()
     st.markdown(
         '<div class="warning-box">'
-        '<b>⚠️ Lưu ý quan trọng:</b> Đề xuất dựa trên mô hình Black-Scholes '
+        '<b>△ Lưu ý quan trọng:</b> Đề xuất dựa trên mô hình Black-Scholes '
         'và các tiêu chí định lượng. <b>Đây không phải là khuyến nghị đầu tư.</b> '
         'Nhà đầu tư cần xem xét thêm: thanh khoản, xu hướng cổ phiếu cơ sở, '
         'tin tức thị trường, và khẩu vị rủi ro cá nhân trước khi quyết định.'
@@ -357,7 +357,7 @@ def _render_budget_allocation(results):
     Phân bổ ngân sách đầu tư cho portfolio CW bằng Markowitz.
     results: danh sách đã sorted theo score (từ render_recommend_tab).
     """
-    section_title("💰", "Phân Bổ Ngân Sách Đầu Tư — Markowitz")
+    section_title("◈", "Phân Bổ Ngân Sách Đầu Tư — Markowitz")
 
     st.markdown(
         '<div class="info-box">'
@@ -390,20 +390,20 @@ def _render_budget_allocation(results):
         source_html = (
             '<div style="margin:8px 0 12px 0;">'
             '<span style="font-size:0.78rem; color:#94A3B8; margin-right:8px;">Nguồn dữ liệu:</span>'
-            f'<span class="data-source-badge real">📊 DỮ LIỆU THỰC</span> '
+            f'<span class="data-source-badge real">▪ DỮ LIỆU THỰC</span> '
             f'<span style="font-size:0.75rem; color:#94A3B8;">{real_count} CW</span>'
             f'&nbsp;&nbsp;'
-            f'<span class="data-source-badge estimated">📐 ƯỚC TÍNH</span> '
+            f'<span class="data-source-badge estimated">∠ ƯỚC TÍNH</span> '
             f'<span style="font-size:0.75rem; color:#94A3B8;">{est_count} CW</span>'
             '</div>'
         )
     else:
         source_html = (
             '<div style="margin:8px 0 12px 0;">'
-            '<span class="data-source-badge estimated">📐 ƯỚC TÍNH</span> '
+            '<span class="data-source-badge estimated">∠ ƯỚC TÍNH</span> '
             '<span style="font-size:0.75rem; color:#94A3B8;">Tất cả dữ liệu đang được ước tính. '
             'Thêm dữ liệu hàng ngày ở Tab '
-            '<b>"📅 Theo Dõi Hàng Ngày"</b> để cải thiện độ chính xác.</span>'
+            '<b>"⊡ Theo Dõi Hàng Ngày"</b> để cải thiện độ chính xác.</span>'
             '</div>'
         )
     st.markdown(source_html, unsafe_allow_html=True)
@@ -413,7 +413,7 @@ def _render_budget_allocation(results):
         excluded_names = ", ".join([f"**{a.name}** (KV: {a.expected_return*100:+.1f}%)" for a in excluded])
         st.markdown(
             f'<div class="warning-box">'
-            f'<b>⚠️ CW bị loại khỏi phân bổ ngân sách:</b> {excluded_names}<br>'
+            f'<b>△ CW bị loại khỏi phân bổ ngân sách:</b> {excluded_names}<br>'
             f'<small>Lý do: Kỳ vọng lợi nhuận quá âm (< -5%). '
             f'CW đang Premium cao hoặc gần hết hạn — khả năng lỗ vốn lớn. '
             f'Markowitz chỉ tối ưu trên các CW còn tiềm năng sinh lời.</small>'
@@ -422,7 +422,7 @@ def _render_budget_allocation(results):
         )
 
     # --- PHẦN 1: Efficient Frontier ---
-    section_title("📈", "Efficient Frontier")
+    section_title("△", "Efficient Frontier")
 
     fig_frontier = create_efficient_frontier_chart(
         frontier, assets,
@@ -441,7 +441,7 @@ def _render_budget_allocation(results):
     with col_ms:
         st.markdown(
             f'<div class="scenario-card scenario-card-gold">'
-            f'<h4 style="color:#FFD700;">⭐ Max Sharpe Ratio</h4>'
+            f'<h4 style="color:#FFD700;">★ Max Sharpe Ratio</h4>'
             f'<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">'
             f'<div><div style="font-size:0.7rem; color:#94A3B8;">Lợi Nhuận KV</div>'
             f'<div style="font-size:1.1rem; color:#22C55E; font-weight:700;">{ms[0]*100:+.1f}%</div></div>'
@@ -456,7 +456,7 @@ def _render_budget_allocation(results):
     with col_mv:
         st.markdown(
             f'<div class="scenario-card scenario-card-teal">'
-            f'<h4 style="color:#4ECDC4;">🛡️ Min Variance (Rủi Ro Thấp Nhất)</h4>'
+            f'<h4 style="color:#4ECDC4;">◇ Min Variance (Rủi Ro Thấp Nhất)</h4>'
             f'<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">'
             f'<div><div style="font-size:0.7rem; color:#94A3B8;">Lợi Nhuận KV</div>'
             f'<div style="font-size:1.1rem; color:#22C55E; font-weight:700;">{mv[0]*100:+.1f}%</div></div>'
@@ -480,13 +480,13 @@ def _render_budget_allocation(results):
 
     # --- Bảng Return/Risk từng CW (bao gồm CW tham gia + bị loại) ---
     section_divider()
-    section_title("📊", "Kỳ Vọng & Rủi Ro Từng CW")
+    section_title("▪", "Kỳ Vọng & Rủi Ro Từng CW")
 
     asset_rows = []
     # CW tham gia tối ưu
     for i, a in enumerate(assets):
         src = data_sources.get(a.name, "estimated")
-        src_label = "📊 Thực" if src == "real" else "📐 Ước tính"
+        src_label = "▪ Thực" if src == "real" else "∠ Ước tính"
         asset_rows.append({
             "Mã CW": a.name,
             "Cổ Phiếu CS": a.ma_co_so,
@@ -498,12 +498,12 @@ def _render_budget_allocation(results):
             "Giá CW (đ)": format_vnd(a.cw_price),
             "W. Max Sharpe": f"{mkz['max_sharpe_weights'][i]*100:.1f}%",
             "W. Min Var": f"{mkz['min_var_weights'][i]*100:.1f}%",
-            "Trạng Thái": "✅ Tham gia",
+            "Trạng Thái": "✓ Tham gia",
         })
     # CW bị loại
     for a in excluded:
         src = data_sources.get(a.name, "estimated")
-        src_label = "📊 Thực" if src == "real" else "📐 Ước tính"
+        src_label = "▪ Thực" if src == "real" else "∠ Ước tính"
         asset_rows.append({
             "Mã CW": a.name,
             "Cổ Phiếu CS": a.ma_co_so,
@@ -515,7 +515,7 @@ def _render_budget_allocation(results):
             "Giá CW (đ)": format_vnd(a.cw_price),
             "W. Max Sharpe": "—",
             "W. Min Var": "—",
-            "Trạng Thái": "❌ Loại (KV âm)",
+            "Trạng Thái": "× Loại (KV âm)",
         })
     table_container("Kỳ Vọng & Rủi Ro Từng CW", badge=f"{len(asset_rows)} CW")
     st.dataframe(pd.DataFrame(asset_rows), use_container_width=True, hide_index=True)
@@ -523,13 +523,13 @@ def _render_budget_allocation(results):
 
     # --- PHẦN 2: Phân bổ ngân sách ---
     section_divider(thick=True)
-    section_title("💵", "Phân Bổ Ngân Sách Thực Tế")
+    section_title("◈", "Phân Bổ Ngân Sách Thực Tế")
 
     col_budget, col_strategy = st.columns([1.5, 1])
 
     with col_budget:
         budget_raw = st.text_input(
-            "💵 Tổng Ngân Sách (VNĐ)",
+            "◆ Tổng Ngân Sách (VNĐ)",
             value="10,000,000",
             key="budget_input",
             help="Nhập số tiền bạn muốn đầu tư vào portfolio CW",
@@ -545,7 +545,7 @@ def _render_budget_allocation(results):
 
     with col_strategy:
         strategy = st.selectbox(
-            "📊 Danh Mục Markowitz",
+            "▪ Danh Mục Markowitz",
             options=["Max Sharpe Ratio", "Min Variance"],
             key="budget_strategy",
             help=(
@@ -649,7 +649,7 @@ def _render_budget_allocation(results):
 
     # --- Bảng chi tiết phân bổ ---
     section_divider()
-    section_title("📋", "Chi Tiết Phân Bổ")
+    section_title("≡", "Chi Tiết Phân Bổ")
 
     table_rows = []
     for idx, a in enumerate(allocations, 1):
@@ -697,7 +697,7 @@ def _render_budget_allocation(results):
     # --- Export ---
     csv_alloc = alloc_df.to_csv(index=False).encode("utf-8")
     st.download_button(
-        label="📥 Tải Phân Bổ Ngân Sách (CSV)",
+        label="↓ Tải Phân Bổ Ngân Sách (CSV)",
         data=csv_alloc,
         file_name="phan_bo_ngan_sach_markowitz.csv",
         mime="text/csv",
@@ -705,7 +705,7 @@ def _render_budget_allocation(results):
     )
 
     # --- Correlation Matrix ---
-    with st.expander("🔗 Ma Trận Tương Quan (Correlation Matrix)", expanded=False):
+    with st.expander("⊞ Ma Trận Tương Quan (Correlation Matrix)", expanded=False):
         corr = mkz["corr_matrix"]
         corr_df = pd.DataFrame(
             np.round(corr, 2),
@@ -734,7 +734,7 @@ def _render_budget_allocation(results):
         )
 
     # --- Giải thích Markowitz ---
-    with st.expander("ℹ️ Về Mô Hình Markowitz", expanded=False):
+    with st.expander("○ Về Mô Hình Markowitz", expanded=False):
         st.markdown(
             "### Modern Portfolio Theory (MPT)\n\n"
             "**Harry Markowitz** (Nobel 1990) đề xuất rằng nhà đầu tư "
@@ -750,14 +750,14 @@ def _render_budget_allocation(results):
             "- **Min Variance**: Tối thiểu hoá rủi ro. "
             "Phù hợp cho nhà đầu tư ưu tiên bảo toàn vốn.\n\n"
             "**Nguồn dữ liệu:**\n"
-            "- 📊 **Dữ liệu thực**: Khi có ≥ 5 ngày lịch sử từ Tab "
+            "- ▪ **Dữ liệu thực**: Khi có ≥ 5 ngày lịch sử từ Tab "
             "\"Theo Dõi Hàng Ngày\", hệ thống dùng actual returns & volatility\n"
-            "- 📐 **Ước tính**: Expected Return dựa trên convergence giá LT↔TT "
+            "- ∠ **Ước tính**: Expected Return dựa trên convergence giá LT↔TT "
             "và effective leverage × equity premium; "
             "Volatility = IV × leverage × √T\n"
             "- *Correlation*: Thực tế khi có dữ liệu chồng lấp, "
             "proxy từ cùng/khác cổ phiếu cơ sở khi không có\n\n"
-            "⚠️ **Lưu ý**: Nhập dữ liệu hàng ngày giúp cải thiện "
+            "△ **Lưu ý**: Nhập dữ liệu hàng ngày giúp cải thiện "
             "đáng kể độ chính xác của mô hình. "
             "Kết quả chỉ mang tính tham khảo."
         )

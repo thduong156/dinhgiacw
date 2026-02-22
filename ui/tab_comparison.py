@@ -13,13 +13,13 @@ def render_comparison_tab(cw):
     """Tab 4: So sánh giá lý thuyết vs thị trường."""
     if cw is None:
         tab_empty_state(
-            "⚖️", "Chưa chọn CW để so sánh giá",
+            "⇌", "Chưa chọn CW để so sánh giá",
             "Thêm CW vào portfolio ở Sidebar, sau đó chọn CW để xem so sánh giá lý thuyết vs thị trường.",
             "Sidebar → Chọn CW",
         )
         return
 
-    section_title("⚖️", "So Sánh Giá Lý Thuyết vs Thị Trường")
+    section_title("⇌", "So Sánh Giá Lý Thuyết vs Thị Trường")
 
     analyzer = WarrantAnalyzer(
         S=cw["S"], K=cw["K"], T=cw["T"],
@@ -80,7 +80,7 @@ def render_comparison_tab(cw):
     col_theo, col_market = st.columns(2)
 
     with col_theo:
-        section_title("📐", "Lý Thuyết (Black-Scholes)")
+        section_title("∠", "Lý Thuyết (Black-Scholes)")
         colored_metric("Giá CW Lý Thuyết", f"{format_vnd(pd_info['theoretical_price'])} đ", color="#FF6B35")
         colored_metric("Giá Trị Nội Tại", f"{format_vnd(analyzer.intrinsic_value())} đ", color="#22C55E")
         colored_metric("Giá Trị Thời Gian", f"{format_vnd(analyzer.time_value())} đ", color="#A78BFA")
@@ -92,7 +92,7 @@ def render_comparison_tab(cw):
 
     iv = None
     with col_market:
-        section_title("📊", "Thị Trường (Thực Tế)")
+        section_title("▪", "Thị Trường (Thực Tế)")
         colored_metric("Giá CW Thị Trường", f"{format_vnd(pd_info['market_price'])} đ", color="#F1F5F9")
 
         try:
@@ -118,7 +118,7 @@ def render_comparison_tab(cw):
 
     # Bảng so sánh chi tiết
     section_divider()
-    section_title("📋", "Bảng So Sánh Chi Tiết")
+    section_title("≡", "Bảng So Sánh Chi Tiết")
 
     iv_market_str = format_pct(iv * 100) if iv is not None else "N/A"
     iv_diff_str = format_pct((iv - cw["sigma"]) * 100) if iv is not None else "N/A"

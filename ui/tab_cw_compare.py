@@ -64,7 +64,7 @@ def _format_date_vn(d):
 
 def render_cw_compare_tab():
     """Tab 7: So sánh nhiều chứng quyền — chọn từ portfolio."""
-    section_title("🔀", "So Sánh Chứng Quyền")
+    section_title("⇌", "So Sánh Chứng Quyền")
 
     st.markdown(
         '<div class="info-box">'
@@ -79,7 +79,7 @@ def render_cw_compare_tab():
 
     if len(portfolio) < 2:
         tab_empty_state(
-            "🔀",
+            "⇌",
             "Cần Ít Nhất 2 CW Để So Sánh",
             "Thêm CW ở Sidebar → Danh Sách CW Portfolio "
             "(thủ công hoặc upload CSV), sau đó quay lại tab này.",
@@ -158,7 +158,7 @@ def render_cw_compare_tab():
         return
 
     # ===== SO SÁNH SIDE-BY-SIDE =====
-    section_title("📊", "So Sánh Các Chỉ Số Chính")
+    section_title("▪", "So Sánh Các Chỉ Số Chính")
 
     cols = st.columns(len(valid))
     for idx, (col, a) in enumerate(zip(cols, valid)):
@@ -217,7 +217,7 @@ def render_cw_compare_tab():
 
     # ===== XẾP HẠNG =====
     section_divider()
-    section_title("🏆", "Xếp Hạng & Khuyến Nghị")
+    section_title("★", "Xếp Hạng & Khuyến Nghị")
 
     rankings = []
     for a in valid:
@@ -278,7 +278,7 @@ def render_cw_compare_tab():
 
     st.markdown(
         '<div class="warning-box">'
-        '<b>⚠️ Lưu ý:</b> Xếp hạng trên chỉ dựa trên từng tiêu chí riêng lẻ. '
+        '<b>△ Lưu ý:</b> Xếp hạng trên chỉ dựa trên từng tiêu chí riêng lẻ. '
         'Quyết định đầu tư cần xem xét tổng hợp nhiều yếu tố. '
         '<b>Đây không phải là khuyến nghị đầu tư.</b>'
         '</div>',
@@ -287,7 +287,7 @@ def render_cw_compare_tab():
 
     # ===== BIỂU ĐỒ SO SÁNH =====
     section_divider()
-    section_title("📈", "Biểu Đồ So Sánh")
+    section_title("△", "Biểu Đồ So Sánh")
 
     chart_col1, chart_col2 = st.columns(2)
 
@@ -327,7 +327,7 @@ def render_cw_compare_tab():
 
     # ===== BẢNG CHI TIẾT + EXPORT =====
     section_divider()
-    section_title("📋", "Bảng So Sánh Chi Tiết")
+    section_title("≡", "Bảng So Sánh Chi Tiết")
 
     table_rows = []
     for a in valid:
@@ -374,7 +374,7 @@ def render_cw_compare_tab():
     # Export
     csv_data = result_df.to_csv(index=False).encode("utf-8")
     st.download_button(
-        label="📥 Tải Kết Quả So Sánh (CSV)",
+        label="↓ Tải Kết Quả So Sánh (CSV)",
         data=csv_data,
         file_name="so_sanh_chung_quyen.csv",
         mime="text/csv",

@@ -20,14 +20,14 @@ def render_scenario_tab(cw):
     """Tab 9: Kịch Bản & Kiểm Tra Sức Chịu Đựng."""
     if cw is None:
         tab_empty_state(
-            "🎯", "Chưa chọn CW để phân tích kịch bản",
+            "⊕", "Chưa chọn CW để phân tích kịch bản",
             "Thêm CW vào danh mục ở thanh bên, sau đó chọn CW để xem "
             "phân tích kịch bản và kiểm tra sức chịu đựng.",
             "Thanh bên → Chọn CW",
         )
         return
 
-    section_title("🎯", "Kịch Bản & Kiểm Tra Sức Chịu Đựng")
+    section_title("⊕", "Kịch Bản & Kiểm Tra Sức Chịu Đựng")
 
     st.markdown(
         '<div class="info-box">'
@@ -69,7 +69,7 @@ def render_scenario_tab(cw):
 
 def _render_pnl_heatmap(analyzer, cw):
     """Bảng nhiệt Lãi/Lỗ: Y = Giá cơ sở, X = Ngày còn lại."""
-    section_title("📊", "Bảng Nhiệt Lãi/Lỗ (Giá × Thời Gian)")
+    section_title("▪", "Bảng Nhiệt Lãi/Lỗ (Giá × Thời Gian)")
 
     S = cw["S"]
     cw_price = cw["cw_price"]
@@ -189,7 +189,7 @@ def _find_breakeven_price(K, T, r, sigma, cr, option_type, q, target_price, S_gu
 
 def _render_vol_shock(analyzer, cw):
     """Bảng nhiệt: Y = Thay đổi giá CS (%), X = Thay đổi IV (điểm)."""
-    section_title("💥", "Phân Tích Cú Sốc Biến Động")
+    section_title("⊗", "Phân Tích Cú Sốc Biến Động")
 
     S = cw["S"]
     cw_price = cw["cw_price"]
@@ -263,7 +263,7 @@ def _render_vol_shock(analyzer, cw):
 
 def _render_quick_scenarios(analyzer, cw):
     """5 kịch bản thiết lập sẵn: Tăng, Giảm, Sụp đổ, Bào mòn thời gian, Tăng mạnh + Biến động giảm."""
-    section_title("⚡", "5 Kịch Bản Nhanh")
+    section_title("▸", "5 Kịch Bản Nhanh")
 
     S = cw["S"]
     K = cw["K"]
@@ -274,31 +274,31 @@ def _render_quick_scenarios(analyzer, cw):
 
     scenarios = [
         {
-            "name": "🐂 Tăng giá",
+            "name": "△ Tăng giá",
             "desc": "Cơ sở +5%, biến động ổn định",
             "dS_pct": 5, "dIV_pts": 0, "hold_days": 5,
             "color": "#22C55E",
         },
         {
-            "name": "🐻 Giảm giá",
+            "name": "▽ Giảm giá",
             "desc": "Cơ sở -5%, biến động +3 điểm",
             "dS_pct": -5, "dIV_pts": 3, "hold_days": 5,
             "color": "#EF4444",
         },
         {
-            "name": "💥 Sụp đổ",
+            "name": "⊗ Sụp đổ",
             "desc": "Cơ sở -10%, biến động +8 điểm",
             "dS_pct": -10, "dIV_pts": 8, "hold_days": 3,
             "color": "#B91C1C",
         },
         {
-            "name": "⏳ Bào mòn thời gian",
+            "name": "⧖ Bào mòn thời gian",
             "desc": "Cơ sở đi ngang, 10 ngày trôi qua",
             "dS_pct": 0, "dIV_pts": 0, "hold_days": 10,
             "color": "#F59E0B",
         },
         {
-            "name": "🚀 Tăng mạnh + BĐ giảm",
+            "name": "▶ Tăng mạnh + BĐ giảm",
             "desc": "Cơ sở +8%, biến động -5 điểm",
             "dS_pct": 8, "dIV_pts": -5, "hold_days": 5,
             "color": "#3B82F6",
@@ -360,7 +360,7 @@ def _render_quick_scenarios(analyzer, cw):
 
 def _render_breakeven_decay(analyzer, cw):
     """Biểu đồ đường: X = Ngày nắm giữ, Y = Giá cơ sở cần để hòa vốn."""
-    section_title("📉", "Đường Suy Giảm Hoà Vốn")
+    section_title("▽", "Đường Suy Giảm Hoà Vốn")
 
     S = cw["S"]
     K = cw["K"]
@@ -398,7 +398,7 @@ def _render_breakeven_decay(analyzer, cw):
         # Các mốc quan trọng
         st.markdown(
             '<div style="padding:12px;">'
-            '<h4 style="color:#B8C2DB;margin:0 0 12px 0;">📌 Mốc Quan Trọng</h4>',
+            '<h4 style="color:#B8C2DB;margin:0 0 12px 0;">▪ Mốc Quan Trọng</h4>',
             unsafe_allow_html=True,
         )
 
@@ -435,7 +435,7 @@ def _render_breakeven_decay(analyzer, cw):
 
 def _render_holding_analysis(analyzer, cw):
     """Bảng: Cột = thời gian nắm giữ, Hàng = chỉ số quan trọng."""
-    section_title("📋", "Phân Tích Theo Thời Gian Nắm Giữ")
+    section_title("≡", "Phân Tích Theo Thời Gian Nắm Giữ")
 
     S = cw["S"]
     K = cw["K"]
@@ -557,7 +557,7 @@ def _render_holding_analysis(analyzer, cw):
 
 def _render_custom_scenario(analyzer, cw):
     """Người dùng nhập % thay đổi giá, điểm IV, số ngày nắm giữ → kết quả chi tiết."""
-    section_title("🔧", "Tự Tạo Kịch Bản")
+    section_title("⚙", "Tự Tạo Kịch Bản")
 
     S = cw["S"]
     K = cw["K"]

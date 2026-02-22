@@ -1349,5 +1349,197 @@ def create_vol_shock_heatmap(z_data, price_labels, iv_labels):
         height=450,
     )
     _apply_axis_style(fig, "Thay Đổi IV (points)", "Thay Đổi Giá CS (%)")
+    return fig
+
+
+# ============================================================
+# MONTE CARLO CHARTS
+# ============================================================
+
+def create_mc_fan_chart(
+    days: "np.ndarray",
+    percentiles: dict,
+    baseline: "np.ndarray",
+    initial_pnl: float = 0.0,
+) -> go.Figure:
+    """
+    Fan chart hiển thị phân phối PnL danh mục theo thời gian.
+
+    Parameters
+    ----------
+    days        : mảng [0, 1, ..., holding_days]
+    percentiles : {"p5", "p25", "p50", "p75", "p95"} — giá trị PnL
+    baseline    : PnL nếu giá không đổi (time decay only)
+    initial_pnl : PnL tại t=0 (luôn = 0)
+    """
+    fig = go.Figure()
+
+    # Band p5–p95 (nhạt)
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([days, days[::-1]]),
+        y=np.concatenate([percentiles["p95"], percentiles["p5"][::-1]]),
+        fill="toself",
+        fillcolor="rgba(59,130,246,0.10)",
+        line=dict(color="rgba(0,0,0,0)"),
+        name="5% – 95%",
+        showlegend=True,
+        hoverinfo="skip",
+    ))
+
+    # Band p25–p75 (đậm hơn)
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([days, days[::-1]]),
+        y=np.concatenate([percentiles["p75"], percentiles["p25"][::-1]]),
+        fill="toself",
+        fillcolor="rgba(59,130,246,0.25)",
+        line=dict(color="rgba(0,0,0,0)"),
+        name="25% – 75%",
+        showlegend=True,
+        hoverinfo="skip",
+    ))
+
+    # Median (p50)
+    fig.add_trace(go.Scatter(
+        x=days, y=percentiles["p50"],
+        mode="lines",
+        line=dict(color="#3B82F6", width=2.5),
+        name="Trung vị (p50)",
+    ))
+
+    # Đường baseline (time decay only — giá không đổi)
+    baseline_arr = np.linspace(initial_pnl, float(baseline), len(days))
+    fig.add_trace(go.Scatter(
+        x=days, y=baseline_arr,
+        mode="lines",
+        line=dict(color=COLORS["primary"], width=1.5, dash="dash"),
+        name="Baseline (giá không đổi)",
+    ))
+
+    # Đường y=0
+    fig.add_hline(y=0, line_dash="dot", line_color="rgba(255,255,255,0.25)", line_width=1)
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(text="△ Hành Trình PnL Danh Mục — Các Kịch Bản Percentile", font=dict(size=14)),
+        height=420,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        hovermode="x unified",
+    )
+    _apply_axis_style(fig, "Ngày giữ", "PnL (VNĐ)")
+    fig.update_yaxes(tickformat=",.0f")
+    return fig
+
+
+def create_mc_distribution(
+    pnl_final: "np.ndarray",
+    var_level: float,
+    cvar_level: float,
+    pnl_baseline: float,
+    confidence_level: float = 0.95,
+) -> go.Figure:
+    """
+    Histogram phân phối PnL cuối kỳ kèm VaR/CVaR/Baseline markers.
+    """
+    fig = go.Figure()
+
+    # Tính màu cho từng bin (đỏ nếu < 0, xanh nếu >= 0)
+    counts, bin_edges = np.histogram(pnl_final, bins=60)
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    colors_hist = [COLORS["negative"] if c < 0 else COLORS["positive"] for c in bin_centers]
+
+    fig.add_trace(go.Bar(
+        x=bin_centers,
+        y=counts,
+        marker_color=colors_hist,
+        marker_opacity=0.75,
+        name="Phân phối PnL",
+        hovertemplate="PnL: %{x:,.0f}đ<br>Số paths: %{y}<extra></extra>",
+    ))
+
+    # VaR line
+    conf_pct = int(confidence_level * 100)
+    fig.add_vline(
+        x=var_level,
+        line_dash="dash", line_color=COLORS["negative"], line_width=2,
+        annotation_text=f"VaR {conf_pct}%",
+        annotation_position="top right",
+        annotation_font_color=COLORS["negative"],
+    )
+
+    # CVaR line
+    fig.add_vline(
+        x=cvar_level,
+        line_dash="solid", line_color="#FF4444", line_width=2,
+        annotation_text=f"CVaR {conf_pct}%",
+        annotation_position="top left",
+        annotation_font_color="#FF4444",
+    )
+
+    # Baseline
+    fig.add_vline(
+        x=pnl_baseline,
+        line_dash="dot", line_color=COLORS["primary"], line_width=1.5,
+        annotation_text="Baseline",
+        annotation_position="top",
+        annotation_font_color=COLORS["primary"],
+    )
+
+    # Zero line
+    fig.add_vline(
+        x=0,
+        line_dash="dot", line_color="rgba(255,255,255,0.3)", line_width=1,
+    )
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(text="▪ Phân Phối PnL Cuối Kỳ", font=dict(size=14)),
+        height=380,
+        bargap=0.05,
+        showlegend=False,
+    )
+    _apply_axis_style(fig, "PnL Cuối Kỳ (VNĐ)", "Số Lượng Paths")
+    fig.update_xaxes(tickformat=",.0f")
+    return fig
+
+
+def create_mc_contribution(
+    cw_names: list,
+    expected_pnl: list,
+    std_pnl: list,
+) -> go.Figure:
+    """
+    Horizontal bar chart đóng góp E[PnL] từng CW, kèm error bar 1σ.
+    """
+    colors = [COLORS["positive"] if v >= 0 else COLORS["negative"] for v in expected_pnl]
+
+    fig = go.Figure(go.Bar(
+        y=cw_names,
+        x=expected_pnl,
+        orientation="h",
+        marker_color=colors,
+        marker_opacity=0.85,
+        error_x=dict(
+            type="data",
+            array=std_pnl,
+            visible=True,
+            color="rgba(255,255,255,0.4)",
+            thickness=1.5,
+            width=4,
+        ),
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "E[PnL]: %{x:,.0f}đ<br>"
+            "<extra></extra>"
+        ),
+    ))
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(text="▣ Đóng Góp PnL Kỳ Vọng Theo CW", font=dict(size=14)),
+        height=max(260, 60 + len(cw_names) * 50),
+        xaxis_tickformat=",.0f",
+    )
+    _apply_axis_style(fig, "E[PnL] (VNĐ)", "")
+    return fig
 
     return fig

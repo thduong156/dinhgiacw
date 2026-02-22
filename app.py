@@ -16,12 +16,13 @@ from ui.tab_greeks import render_greeks_tab
 from ui.tab_iv import render_iv_tab
 from ui.tab_daily_tracker import render_daily_tracker_tab
 from ui.tab_scenario import render_scenario_tab
+from ui.tab_monte_carlo import render_monte_carlo_tab
 from data.portfolio_manager import load_portfolio, deserialize_cw_entry
 
 # Page config
 st.set_page_config(
     page_title="Phân Tích Chứng Quyền - Black-Scholes",
-    page_icon="📊",
+    page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -47,16 +48,17 @@ if "cw_portfolio" not in st.session_state:
 selected_cw = parameter_sidebar()
 
 # Tabs — workflow order: Định giá → Phân tích loạt → So sánh → Greeks → Đề xuất → Dự báo → IV → Kịch bản → Theo dõi
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-    "📈 Định Giá CW",
-    "📋 Phân Tích Hàng Loạt",
-    "🔀 So Sánh CW",
-    "📊 Chỉ Số Hy Lạp",
-    "🏅 Đề Xuất CW",
-    "🔮 Dự Báo & Đòn Bẩy",
-    "📉 Biến Động Ngầm Định",
-    "🎯 Kịch Bản & Stress Test",
-    "📅 Theo Dõi Hàng Ngày",
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+    "◈ Định Giá CW",
+    "≡ Phân Tích Hàng Loạt",
+    "⇌ So Sánh CW",
+    "Δ Chỉ Số Hy Lạp",
+    "★ Đề Xuất CW",
+    "◇ Dự Báo & Đòn Bẩy",
+    "σ Biến Động Ngầm Định",
+    "⊕ Kịch Bản & Stress Test",
+    "⊡ Theo Dõi Hàng Ngày",
+    "∿ Monte Carlo",
 ])
 
 with tab1:
@@ -85,6 +87,9 @@ with tab8:
 
 with tab9:
     render_daily_tracker_tab()
+
+with tab10:
+    render_monte_carlo_tab()
 
 # Footer
 st.markdown(

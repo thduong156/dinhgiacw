@@ -13,13 +13,13 @@ def render_iv_tab(cw):
     """Tab 3: Biến động ngầm định (Implied Volatility)."""
     if cw is None:
         tab_empty_state(
-            "📉", "Chưa chọn CW để phân tích IV",
+            "σ", "Chưa chọn CW để phân tích IV",
             "Thêm CW vào portfolio ở Sidebar, sau đó chọn CW để xem phân tích Implied Volatility.",
             "Sidebar → Chọn CW",
         )
         return
 
-    section_title("📉", "Biến Động Ngầm Định (Implied Volatility)")
+    section_title("σ", "Biến Động Ngầm Định (Implied Volatility)")
 
     # IV Solver
     iv = None
@@ -100,7 +100,7 @@ def render_iv_tab(cw):
     col_chart, col_table = st.columns([1.3, 1])
 
     with col_chart:
-        section_title("📈", "Độ Nhạy Giá CW theo Volatility")
+        section_title("△", "Độ Nhạy Giá CW theo Volatility")
         chart_container("Giá CW lý thuyết theo volatility")
         fig = create_iv_sensitivity(
             cw["S"], cw["K"], cw["T"],
@@ -111,7 +111,7 @@ def render_iv_tab(cw):
         chart_container_end()
 
     with col_table:
-        section_title("📋", "Bảng Giá CW theo Mức Volatility")
+        section_title("≡", "Bảng Giá CW theo Mức Volatility")
         vol_levels = [-15, -10, -5, 0, 5, 10, 15]
         rows = []
         for dv in vol_levels:

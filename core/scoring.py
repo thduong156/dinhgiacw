@@ -118,7 +118,7 @@ def score_cw(analysis: dict, days_remaining: int) -> tuple:
 def grade_label(score: int) -> tuple:
     """Nhãn xếp hạng theo điểm. Returns (label_text, color_hex)."""
     if score >= 80:
-        return "⭐ Xuất Sắc", "#22C55E"
+        return "★ Xuất Sắc", "#22C55E"
     elif score >= 65:
         return "🟢 Tốt", "#4ADE80"
     elif score >= 50:

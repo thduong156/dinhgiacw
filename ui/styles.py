@@ -633,6 +633,21 @@ def inject_custom_css():
             font-weight: 700;
             font-family: 'Fira Code', 'JetBrains Mono', monospace;
         }
+        /* Card variant dùng cho Monte Carlo metrics */
+        .custom-metric-card {
+            background: #1A1D27;
+            border: 1px solid #2E3348;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            transition: border-color 0.2s ease;
+        }
+        .custom-metric-card:hover { border-color: #444C66; }
+        .custom-metric-sublabel {
+            color: #7A84A0;
+            font-size: 0.65rem;
+            margin-top: 2px;
+        }
 
         /* ===== EXPANDER ===== */
         .streamlit-expanderHeader {

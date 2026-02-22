@@ -208,7 +208,7 @@ def render_pricing_tab(cw):
     """Tab 1: Định giá chứng quyền."""
     if cw is None:
         tab_empty_state(
-            "📈", "Chưa chọn CW để phân tích",
+            "◈", "Chưa chọn CW để phân tích",
             "Thêm CW vào portfolio ở Sidebar, sau đó chọn CW để xem định giá chi tiết.",
             "Sidebar → Thêm CW",
         )
@@ -224,11 +224,11 @@ def render_pricing_tab(cw):
     )
 
     # ===== TỔNG QUAN NHANH =====
-    section_title("⚡", "Tổng Quan Nhanh")
+    section_title("▸", "Tổng Quan Nhanh")
     _quick_summary(analyzer, cw)
 
     # ===== ĐỊNH GIÁ CHI TIẾT =====
-    section_title("💰", "Định Giá Chứng Quyền (Black-Scholes)")
+    section_title("◆", "Định Giá Chứng Quyền (Black-Scholes)")
 
     # Kết quả chính
     theo_price = analyzer.theoretical_cw_price()
@@ -297,11 +297,11 @@ def render_pricing_tab(cw):
         if pnl_vnd >= 0:
             pnl_box = "success-box"
             pnl_label = "LỜI"
-            pnl_icon = "📈"
+            pnl_icon = "△"
         else:
             pnl_box = "danger-box"
             pnl_label = "LỖ"
-            pnl_icon = "📉"
+            pnl_icon = "▽"
 
         st.markdown(
             f'<div class="{pnl_box}">'
@@ -347,7 +347,7 @@ def render_pricing_tab(cw):
         )
 
     # Biểu đồ Payoff
-    section_title("📊", "Biểu Đồ Lợi Nhuận (Payoff Diagram)")
+    section_title("▪", "Biểu Đồ Lợi Nhuận (Payoff Diagram)")
 
     chart_container("Payoff tại đáo hạn vs giá trị hiện tại")
     fig = create_payoff_diagram(
@@ -360,7 +360,7 @@ def render_pricing_tab(cw):
 
     # ===== SO SÁNH GIÁ LÝ THUYẾT vs THỊ TRƯỜNG =====
     section_divider()
-    section_title("⚖️", "So Sánh Giá Lý Thuyết vs Thị Trường")
+    section_title("⇌", "So Sánh Giá Lý Thuyết vs Thị Trường")
 
     pd_info = analyzer.premium_discount()
 
@@ -368,7 +368,7 @@ def render_pricing_tab(cw):
     col_theo, col_market = st.columns(2)
 
     with col_theo:
-        section_title("📐", "Lý Thuyết (Black-Scholes)")
+        section_title("∠", "Lý Thuyết (Black-Scholes)")
         colored_metric("Giá CW Lý Thuyết", f"{format_vnd(pd_info['theoretical_price'])} đ", color="#FF6B35")
         colored_metric("Giá Trị Nội Tại", f"{format_vnd(intrinsic)} đ", color="#22C55E")
         colored_metric("Giá Trị Thời Gian", f"{format_vnd(time_val)} đ", color="#A78BFA")
@@ -380,7 +380,7 @@ def render_pricing_tab(cw):
 
     iv = None
     with col_market:
-        section_title("📊", "Thị Trường (Thực Tế)")
+        section_title("▪", "Thị Trường (Thực Tế)")
         colored_metric("Giá CW Thị Trường", f"{format_vnd(pd_info['market_price'])} đ", color="#F1F5F9")
 
         try:
@@ -406,7 +406,7 @@ def render_pricing_tab(cw):
 
     # Bảng so sánh chi tiết
     section_divider()
-    section_title("📋", "Bảng So Sánh Chi Tiết")
+    section_title("≡", "Bảng So Sánh Chi Tiết")
 
     iv_market_str = format_pct(iv * 100) if iv is not None else "N/A"
     iv_diff_str = format_pct((iv - cw["sigma"]) * 100) if iv is not None else "N/A"

@@ -13,13 +13,13 @@ def render_forecast_tab(cw):
     """Tab 5: Dự báo giá kỳ vọng và đòn bẩy hiệu dụng."""
     if cw is None:
         tab_empty_state(
-            "🔮", "Chưa chọn CW để dự báo",
+            "◇", "Chưa chọn CW để dự báo",
             "Thêm CW vào portfolio ở Sidebar, sau đó chọn CW để xem dự báo giá và phân tích đòn bẩy.",
             "Sidebar → Chọn CW",
         )
         return
 
-    section_title("🔮", "Dự Báo Giá Kỳ Vọng & Đòn Bẩy Hiệu Dụng")
+    section_title("◇", "Dự Báo Giá Kỳ Vọng & Đòn Bẩy Hiệu Dụng")
 
     analyzer = WarrantAnalyzer(
         S=cw["S"], K=cw["K"], T=cw["T"],
@@ -60,7 +60,7 @@ def render_forecast_tab(cw):
     )
 
     # Phần 2: Dự báo 3 kịch bản
-    section_title("🎯", "Dự Báo 3 Kịch Bản")
+    section_title("⊕", "Dự Báo 3 Kịch Bản")
 
     price_changes = [-20, -15, -10, -5, 0, 5, 10, 15, 20]
     vol_changes = [-10, -5, 0, 5, 10]
@@ -114,7 +114,7 @@ def render_forecast_tab(cw):
         colored_metric("Giá CW Kỳ Vọng", f"{format_vnd(cw_down)} đ", color="#EF4444", delta=f"{pnl_down_pct:+.1f}%")
 
     # Phần 3: Heatmap + Bảng kịch bản
-    section_title("🗺️", "Ma Trận Kịch Bản")
+    section_title("▦", "Ma Trận Kịch Bản")
 
     col_heatmap, col_table = st.columns([1.4, 1])
 
@@ -143,7 +143,7 @@ def render_forecast_tab(cw):
         table_container_end()
 
     # Phần 4: Time Decay + 3D Surface
-    section_title("⏳", "Phân Tích Nâng Cao")
+    section_title("⧖", "Phân Tích Nâng Cao")
 
     col_decay, col_3d = st.columns(2)
 

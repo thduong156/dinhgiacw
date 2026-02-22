@@ -162,7 +162,7 @@ def _trend_badge(current, previous):
 
 def render_daily_tracker_tab():
     """Tab 9: Theo dõi dữ liệu hàng ngày cho từng CW."""
-    section_title("📅", "Theo Dõi Dữ Liệu Hàng Ngày")
+    section_title("⊡", "Theo Dõi Dữ Liệu Hàng Ngày")
 
     st.markdown(
         '<div class="info-box">'
@@ -179,7 +179,7 @@ def render_daily_tracker_tab():
 
     if not cw_options:
         tab_empty_state(
-            "📅",
+            "⊡",
             "Chưa Có CW Nào Trong Portfolio",
             "Thêm CW vào portfolio ở Sidebar trước, sau đó quay lại đây "
             "để bắt đầu theo dõi dữ liệu hàng ngày.",
@@ -217,7 +217,7 @@ def render_daily_tracker_tab():
     section_divider(thick=True)
 
     # ===== DAILY INPUT FORM =====
-    section_title("📝", "Nhập Dữ Liệu Hàng Ngày")
+    section_title("▹", "Nhập Dữ Liệu Hàng Ngày")
 
     defaults = _get_portfolio_defaults(selected_ma)
 
@@ -226,28 +226,28 @@ def render_daily_tracker_tab():
 
         with col_date:
             input_date_str = st.text_input(
-                "📅 Ngày",
+                "⊡ Ngày",
                 value=date.today().strftime("%d/%m/%y"),
                 help="DD/MM/YY — VD: 18/02/26",
             )
 
         with col_s:
             input_S_str = st.text_input(
-                "💰 Giá Cổ Sở (S)",
+                "◆ Giá Cổ Sở (S)",
                 value=_fmt_number(defaults["S"]),
                 help="Giá cổ phiếu cơ sở — VD: 100,000",
             )
 
         with col_cw:
             input_cw_str = st.text_input(
-                "🏷️ Giá CW",
+                "▪ Giá CW",
                 value=_fmt_number(defaults["cw_price"]),
                 help="Giá CW trên sàn — VD: 3,800",
             )
 
         with col_sigma:
             input_sigma_str = st.text_input(
-                "📊 σ (%)",
+                "▪ σ (%)",
                 value=f"{defaults['sigma'] * 100:.1f}",
                 help="Biến động lịch sử — VD: 35.0",
             )
@@ -255,13 +255,13 @@ def render_daily_tracker_tab():
         col_sync, col_submit = st.columns([2, 1])
         with col_sync:
             auto_sync = st.checkbox(
-                "🔄 Tự động cập nhật Portfolio",
+                "↻ Tự động cập nhật Portfolio",
                 value=True,
                 help="S, Giá CW, sigma sẽ được cập nhật vào portfolio khi lưu",
             )
         with col_submit:
             submitted = st.form_submit_button(
-                "💾 Lưu Dữ Liệu", use_container_width=True,
+                "▪ Lưu Dữ Liệu", use_container_width=True,
             )
 
     if submitted:
@@ -283,9 +283,9 @@ def render_daily_tracker_tab():
                 continue
 
         if input_date is None:
-            st.error("❌ Định dạng ngày không hợp lệ. Nhập **DD/MM/YY** (VD: 18/02/26)")
+            st.error("× Định dạng ngày không hợp lệ. Nhập **DD/MM/YY** (VD: 18/02/26)")
         elif input_S <= 0 or input_cw_price <= 0:
-            st.error("❌ Giá cơ sở và giá CW phải lớn hơn 0.")
+            st.error("× Giá cơ sở và giá CW phải lớn hơn 0.")
         else:
             sigma_decimal = input_sigma_pct / 100.0
             date_str = input_date.strftime("%Y-%m-%d")
@@ -313,7 +313,7 @@ def render_daily_tracker_tab():
             pd_pct = auto_fields.get("premium_discount_pct")
             score = auto_fields.get("score")
 
-            msg = f"✅ Đã lưu **{input_date.strftime('%d/%m/%y')}** — **{selected_ma}**"
+            msg = f"✓ Đã lưu **{input_date.strftime('%d/%m/%y')}** — **{selected_ma}**"
             if theo:
                 msg += f" | LT: **{format_vnd(theo)} đ**"
             if pd_pct is not None:
@@ -330,7 +330,7 @@ def render_daily_tracker_tab():
 
     if not records:
         tab_empty_state(
-            "📅",
+            "⊡",
             "Chưa Có Dữ Liệu Lịch Sử",
             f"Nhập dữ liệu cho **{selected_ma}** ở form bên trên. "
             "Hệ thống sẽ tự động tính giá lý thuyết, Greeks và score.",
@@ -340,7 +340,7 @@ def render_daily_tracker_tab():
 
     # ===== SUMMARY STATS =====
     if len(records) >= 2:
-        section_title("📊", "Tổng Quan")
+        section_title("▪", "Tổng Quan")
 
         first_rec = records[0]
         last_rec = records[-1]
@@ -386,7 +386,7 @@ def render_daily_tracker_tab():
 
     # ===== TREND CHARTS =====
     if len(records) >= 2:
-        section_title("📈", "Biểu Đồ Xu Hướng")
+        section_title("△", "Biểu Đồ Xu Hướng")
 
         chart_row1_col1, chart_row1_col2 = st.columns(2)
 
@@ -419,7 +419,7 @@ def render_daily_tracker_tab():
         section_divider()
 
     # ===== HISTORY TABLE =====
-    section_title("📋", "Lịch Sử Dữ Liệu")
+    section_title("≡", "Lịch Sử Dữ Liệu")
 
     display_rows = []
     for r in reversed(records):  # Most recent first
@@ -440,7 +440,7 @@ def render_daily_tracker_tab():
 
     # ===== EXPORT & MANAGE =====
     section_divider()
-    section_title("🔧", "Quản Lý Dữ Liệu")
+    section_title("⚙", "Quản Lý Dữ Liệu")
 
     col_export, col_delete_one, col_delete_all = st.columns(3)
 
@@ -448,7 +448,7 @@ def render_daily_tracker_tab():
         csv_str = export_history_csv(selected_ma)
         if csv_str:
             st.download_button(
-                label="📥 Tải Lịch Sử (CSV)",
+                label="↓ Tải Lịch Sử (CSV)",
                 data=csv_str.encode("utf-8"),
                 file_name=f"daily_{selected_ma}.csv",
                 mime="text/csv",
@@ -468,7 +468,7 @@ def render_daily_tracker_tab():
                 format_func=lambda i: date_labels[i],
                 key="_daily_del_date",
             )
-            if st.button("🗑️ Xóa Ngày Này", key="_daily_del_btn"):
+            if st.button("× Xóa Ngày Này", key="_daily_del_btn"):
                 del_date = date_values[del_idx]
                 if delete_daily_record(selected_ma, del_date):
                     st.success(f"Đã xóa record ngày {_fmt_date(del_date)}.")
@@ -479,27 +479,27 @@ def render_daily_tracker_tab():
     with col_delete_all:
         st.markdown("")
         st.markdown("")
-        if st.button("⚠️ Xóa Toàn Bộ Lịch Sử", key="_daily_del_all", type="secondary"):
+        if st.button("△ Xóa Toàn Bộ Lịch Sử", key="_daily_del_all", type="secondary"):
             st.session_state["_daily_confirm_delete"] = True
 
         if st.session_state.get("_daily_confirm_delete"):
             st.warning(f"Xóa **toàn bộ {len(records)} ngày** dữ liệu của **{selected_ma}**?")
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("✅ Xác Nhận Xóa", key="_daily_confirm_yes"):
+                if st.button("✓ Xác Nhận Xóa", key="_daily_confirm_yes"):
                     delete_all_history(selected_ma)
                     st.session_state["_daily_confirm_delete"] = False
                     st.success(f"Đã xóa toàn bộ lịch sử {selected_ma}.")
                     st.rerun()
             with c2:
-                if st.button("❌ Hủy", key="_daily_confirm_no"):
+                if st.button("× Hủy", key="_daily_confirm_no"):
                     st.session_state["_daily_confirm_delete"] = False
                     st.rerun()
 
     # ===== BULK IMPORT =====
     section_divider()
 
-    with st.expander("📤 Nhập Dữ Liệu Hàng Loạt (CSV)", expanded=False):
+    with st.expander("↑ Nhập Dữ Liệu Hàng Loạt (CSV)", expanded=False):
         st.markdown(
             '<div class="info-box">'
             'Upload file CSV với các cột: <b>date, S, cw_price, sigma</b>. '
@@ -559,7 +559,7 @@ def render_daily_tracker_tab():
                             error_count += 1
 
                     st.success(
-                        f"✅ Import hoàn tất: **{success_count}** records thành công"
+                        f"✓ Import hoàn tất: **{success_count}** records thành công"
                         + (f", **{error_count}** lỗi" if error_count > 0 else "")
                     )
 

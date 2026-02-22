@@ -13,13 +13,13 @@ def render_greeks_tab(cw):
     """Tab 2: Phân tích Greeks."""
     if cw is None:
         tab_empty_state(
-            "📊", "Chưa chọn CW để phân tích Greeks",
+            "▪", "Chưa chọn CW để phân tích Greeks",
             "Thêm CW vào portfolio ở Sidebar, sau đó chọn CW để xem chỉ số Greeks.",
             "Sidebar → Chọn CW",
         )
         return
 
-    section_title("📊", "Chỉ Số Greeks")
+    section_title("▪", "Chỉ Số Greeks")
 
     model = BlackScholesModel(
         cw["S"], cw["K"], cw["T"],
@@ -76,7 +76,7 @@ def render_greeks_tab(cw):
         )
 
     # Biểu đồ sensitivity
-    section_title("📈", "Biểu Đồ Độ Nhạy")
+    section_title("△", "Biểu Đồ Độ Nhạy")
 
     col1, col2 = st.columns(2)
 

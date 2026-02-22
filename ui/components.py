@@ -101,7 +101,7 @@ def parameter_sidebar():
             _render_selected_dashboard(selected_cw)
         else:
             _render_empty_state(
-                "📊",
+                "◈",
                 "Chưa có CW nào",
                 "Thêm CW ở phần Portfolio bên dưới để bắt đầu phân tích.",
             )
@@ -127,7 +127,7 @@ def _render_sidebar_brand():
     """Render branded header cho sidebar."""
     st.markdown(
         '<div class="sb-brand">'
-        '<div class="sb-brand-icon">📊</div>'
+        '<div class="sb-brand-icon">◈</div>'
         '<div class="sb-brand-title">CW Analyzer</div>'
         '<div class="sb-brand-subtitle">Covered Warrant Dashboard</div>'
         '</div>',
@@ -218,11 +218,11 @@ def _render_position_pnl_html(cw: dict) -> str:
     if pnl_vnd >= 0:
         pnl_color = "#22C55E"
         pnl_sign = "+"
-        pnl_icon = "📈"
+        pnl_icon = "△"
     else:
         pnl_color = "#EF4444"
         pnl_sign = ""
-        pnl_icon = "📉"
+        pnl_icon = "▽"
 
     return (
         f'<div style="margin-top:8px; padding:8px 10px; '
@@ -357,7 +357,7 @@ def _render_portfolio_section():
 
     # Add CW button
     st.markdown("")
-    if st.button("➕ Thêm CW", use_container_width=True, key="sidebar_add_cw"):
+    if st.button("+ Thêm CW", use_container_width=True, key="sidebar_add_cw"):
         st.session_state["_show_add_form"] = not st.session_state.get("_show_add_form", False)
         st.rerun()
 
@@ -366,7 +366,7 @@ def _render_portfolio_section():
         _render_add_cw_form()
 
     # CSV upload in expander
-    with st.expander("📄 Import CSV", expanded=False):
+    with st.expander("▤ Import CSV", expanded=False):
         uploaded = st.file_uploader(
             "Chọn file CSV",
             type=["csv"],
@@ -423,13 +423,13 @@ def _render_cw_card(cw: dict, index: int):
     # Buttons: Edit + Xoá
     col_edit, col_del = st.columns(2)
     with col_edit:
-        if st.button("✏️ Sửa", key=f"edit_cw_{index}", use_container_width=True):
+        if st.button("∕ Sửa", key=f"edit_cw_{index}", use_container_width=True):
             st.session_state[editing_key] = not is_editing
             # Clear money-input cache so form shows fresh data
             _clear_money_cache(f"edit{index}")
             st.rerun()
     with col_del:
-        if st.button("❌ Xoá", key=f"remove_cw_{index}", use_container_width=True):
+        if st.button("× Xoá", key=f"remove_cw_{index}", use_container_width=True):
             portfolio = st.session_state["cw_portfolio"]
             if index < len(portfolio):
                 portfolio.pop(index)
@@ -447,7 +447,7 @@ def _render_edit_cw_form(cw: dict, index: int):
     prefix = f"edit{index}"
     editing_key = f"_editing_cw_{index}"
 
-    with st.expander(f"✏️ Sửa {cw.get('ma_cw', f'CW #{index}')}", expanded=True):
+    with st.expander(f"∕ Sửa {cw.get('ma_cw', f'CW #{index}')}", expanded=True):
         ma_cw = st.text_input(
             "Mã CW", value=cw.get("ma_cw", ""),
             key=f"{prefix}_ma_cw",
@@ -530,7 +530,7 @@ def _render_edit_cw_form(cw: dict, index: int):
                               key=f"{prefix}_issuer")
 
         # Position Tracking
-        with st.expander("📊 Vị Thế (Position)", expanded=False):
+        with st.expander("▪ Vị Thế (Position)", expanded=False):
             pos_c1, pos_c2 = st.columns(2)
             with pos_c1:
                 _existing_entry = cw.get("entry_price") or 0
@@ -549,7 +549,7 @@ def _render_edit_cw_form(cw: dict, index: int):
 
         col_save, col_cancel = st.columns(2)
         with col_save:
-            if st.button("💾 Lưu", key=f"{prefix}_save", use_container_width=True):
+            if st.button("▪ Lưu", key=f"{prefix}_save", use_container_width=True):
                 T = max((maturity - date.today()).days / 365.0, 0.001)
                 days_rem = max((maturity - date.today()).days, 0)
                 updated = {
@@ -577,7 +577,7 @@ def _render_edit_cw_form(cw: dict, index: int):
                     st.rerun()
 
         with col_cancel:
-            if st.button("✖ Huỷ", key=f"{prefix}_cancel", use_container_width=True):
+            if st.button("× Huỷ", key=f"{prefix}_cancel", use_container_width=True):
                 st.session_state[editing_key] = False
                 _clear_money_cache(prefix)
                 st.rerun()
@@ -585,7 +585,7 @@ def _render_edit_cw_form(cw: dict, index: int):
 
 def _render_add_cw_form():
     """Form thêm CW mới vào portfolio."""
-    with st.expander("📝 Nhập CW Mới", expanded=True):
+    with st.expander("▹ Nhập CW Mới", expanded=True):
         ma_cw = st.text_input("Mã CW", key="add_ma_cw", placeholder="CVPB2401")
         ma_co_so = st.text_input("Mã cổ phiếu cơ sở", key="add_ma_cs", placeholder="VPB")
 
@@ -619,7 +619,7 @@ def _render_add_cw_form():
         ], key="add_issuer", help="Tổ chức phát hành chứng quyền")
 
         # Position Tracking — optional
-        with st.expander("📊 Vị Thế (Position)", expanded=False):
+        with st.expander("▪ Vị Thế (Position)", expanded=False):
             pos_c1, pos_c2 = st.columns(2)
             with pos_c1:
                 entry_price = _money_input(
@@ -634,7 +634,7 @@ def _render_add_cw_form():
                     help_text="Số lượng CW đang nắm giữ (0 = chưa mua)",
                 ))
 
-        if st.button("✅ Xác Nhận Thêm CW", use_container_width=True, key="confirm_add_cw"):
+        if st.button("✓ Xác Nhận Thêm CW", use_container_width=True, key="confirm_add_cw"):
             if ma_cw:
                 T = max((maturity - date.today()).days / 365.0, 0.001)
                 days_rem = max((maturity - date.today()).days, 0)
@@ -740,19 +740,19 @@ def _render_save_load_section():
 
         col_load, col_del = st.columns(2)
         with col_load:
-            if st.button("📂 Tải", use_container_width=True, key="btn_load_portfolio"):
+            if st.button("▤ Tải", use_container_width=True, key="btn_load_portfolio"):
                 data = load_portfolio(selected)
                 if data:
                     _apply_loaded_portfolio(data)
                     st.success(f"Đã tải: {data['portfolio_name']}")
                     st.rerun()
         with col_del:
-            if st.button("🗑 Xoá", use_container_width=True, key="btn_del_portfolio"):
+            if st.button("× Xoá", use_container_width=True, key="btn_del_portfolio"):
                 delete_portfolio(selected)
                 st.rerun()
     else:
         _render_empty_state(
-            "📁",
+            "▤",
             "Chưa có portfolio",
             "Lưu portfolio để sử dụng lại sau.",
         )
@@ -766,7 +766,7 @@ def _render_save_load_section():
         label_visibility="collapsed",
         placeholder="Nhập tên portfolio...",
     )
-    if st.button("💾 Lưu Portfolio", use_container_width=True, key="btn_save_portfolio"):
+    if st.button("▪ Lưu Portfolio", use_container_width=True, key="btn_save_portfolio"):
         portfolio = st.session_state.get("cw_portfolio", [])
         if portfolio:
             save_portfolio(save_name, portfolio)

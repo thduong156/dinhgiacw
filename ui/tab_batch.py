@@ -11,7 +11,7 @@ from ui.charts import create_batch_pd_bar, create_batch_leverage_scatter
 
 def render_batch_tab():
     """Tab 6: Phân tích hàng loạt TẤT CẢ CW trong portfolio."""
-    section_title("📋", "Phân Tích Hàng Loạt CW")
+    section_title("≡", "Phân Tích Hàng Loạt CW")
 
     st.markdown(
         '<div class="info-box">'
@@ -27,7 +27,7 @@ def render_batch_tab():
 
     if len(portfolio) == 0:
         tab_empty_state(
-            "📋",
+            "≡",
             "Chưa có CW nào trong Portfolio",
             "Thêm CW ở Sidebar (thủ công hoặc upload CSV), "
             "sau đó quay lại tab này để phân tích hàng loạt.",
@@ -117,7 +117,7 @@ def render_batch_tab():
     progress_bar.empty()
 
     # Kết quả
-    section_title("📊", "Kết Quả Phân Tích")
+    section_title("▪", "Kết Quả Phân Tích")
 
     # DataFrame hiển thị (bỏ cột _raw)
     display_results = []
@@ -134,7 +134,7 @@ def render_batch_tab():
     valid_results = [r for r in results if "Lỗi" not in r]
     if valid_results:
         section_divider()
-        section_title("📈", "Thống Kê Tổng Hợp")
+        section_title("△", "Thống Kê Tổng Hợp")
 
         premium_count = sum(1 for r in valid_results if r["Trạng Thái"] == "Premium")
         discount_count = sum(1 for r in valid_results if r["Trạng Thái"] == "Discount")
@@ -188,7 +188,7 @@ def render_batch_tab():
     section_divider()
     csv_data = result_df.to_csv(index=False).encode("utf-8")
     st.download_button(
-        label="📥 Tải Kết Quả (CSV)",
+        label="↓ Tải Kết Quả (CSV)",
         data=csv_data,
         file_name="phan_tich_chung_quyen.csv",
         mime="text/csv",
