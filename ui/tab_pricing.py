@@ -283,7 +283,7 @@ def render_pricing_tab(cw):
         colored_metric("Theta Efficiency", te_display, color=te_color)
     with c12:
         issuer = cw.get("issuer", "—")
-        colored_metric("TCPH / Giá Tick", f"{issuer} | {format_vnd(price_tick)} đ", color="#93C5FD")
+        colored_metric("TCPH / Giá LT (tròn)", f"{issuer} | {format_vnd(price_tick)} đ", color="#93C5FD")
 
     # Position P&L (nếu có vị thế)
     entry_p = cw.get("entry_price")
