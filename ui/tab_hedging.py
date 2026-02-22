@@ -167,44 +167,50 @@ def _render_stock_positions():
 # ── Section 2: Chọn Khẩu Vị Rủi Ro ─────────────────────────────
 
 def _render_risk_profile_selector() -> str:
-    """5 cards chọn risk profile. Returns profile key."""
+    """5 buttons chọn risk profile. Returns profile key."""
     section_title("⊕", "Chọn Khẩu Vị Rủi Ro")
 
-    # Default
     if "hedging_profile" not in st.session_state:
         st.session_state["hedging_profile"] = "moderate"
 
-    # Render 5 cards
     profile_keys = list(RISK_PROFILES.keys())
-    cards_html = '<div class="rp-grid">'
-    for key in profile_keys:
+    cols = st.columns(5)
+
+    for i, key in enumerate(profile_keys):
         p = RISK_PROFILES[key]
-        selected_cls = "rp-selected" if st.session_state["hedging_profile"] == key else ""
+        is_selected = st.session_state["hedging_profile"] == key
         stock_lo, stock_hi = [int(x * 100) for x in p["target_stock_pct"]]
         cw_lo, cw_hi = [int(x * 100) for x in p["target_cw_pct"]]
-        cards_html += (
-            f'<div class="rp-card {selected_cls}">'
-            f'<div class="rp-icon" style="color:{p["color"]}">{p["icon"]}</div>'
-            f'<div class="rp-name">{p["name_vi"]}</div>'
-            f'<div class="rp-desc">{p["description"]}</div>'
-            f'<div class="rp-target">{stock_lo}-{stock_hi}% CP | {cw_lo}-{cw_hi}% CW</div>'
-            f'</div>'
-        )
-    cards_html += '</div>'
-    st.markdown(cards_html, unsafe_allow_html=True)
 
-    # Streamlit radio (functional selector)
-    profile_names = {k: RISK_PROFILES[k]["name_vi"] for k in profile_keys}
-    selected = st.radio(
-        "Chọn nhóm:",
-        options=profile_keys,
-        format_func=lambda k: profile_names[k],
-        index=profile_keys.index(st.session_state["hedging_profile"]),
-        horizontal=True,
-        key="hedging_profile_radio",
-    )
-    st.session_state["hedging_profile"] = selected
-    return selected
+        with cols[i]:
+            border_color = "#FFFFFF" if is_selected else "#2E3348"
+            bg = "#222633" if is_selected else "#1A1D27"
+            shadow = "0 0 15px rgba(255,255,255,0.08)" if is_selected else "none"
+            st.markdown(
+                f'<div style="background:{bg};border:{"2px" if is_selected else "1px"} solid {border_color};'
+                f'border-radius:12px;padding:14px 10px;text-align:center;box-shadow:{shadow};">'
+                f'<div style="font-size:1.6rem;font-family:Fira Code,monospace;'
+                f'font-weight:700;color:{p["color"]};margin-bottom:4px">{p["icon"]}</div>'
+                f'<div style="font-family:Playfair Display,Georgia,serif;'
+                f'font-size:0.82rem;font-weight:600;color:#F0F4FF;margin-bottom:4px">{p["name_vi"]}</div>'
+                f'<div style="font-size:0.7rem;color:#7A84A0;line-height:1.4;'
+                f'margin-bottom:6px">{p["description"]}</div>'
+                f'<div style="font-family:Fira Code,monospace;font-size:0.68rem;color:#B8C2DB;'
+                f'padding:3px 6px;background:rgba(255,255,255,0.04);border-radius:4px;'
+                f'display:inline-block">{stock_lo}-{stock_hi}% CP | {cw_lo}-{cw_hi}% CW</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                p["name_vi"],
+                key=f"rp_btn_{key}",
+                use_container_width=True,
+                type="primary" if is_selected else "secondary",
+            ):
+                st.session_state["hedging_profile"] = key
+                st.rerun()
+
+    return st.session_state["hedging_profile"]
 
 
 # ── Section 3: Tổng Quan Danh Mục ───────────────────────────────
