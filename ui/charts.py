@@ -36,6 +36,13 @@ COMMON_LAYOUT = dict(
 )
 
 
+def _hex_to_rgba(hex_color: str, alpha: float = 1.0) -> str:
+    """Convert hex color (#RRGGBB) to rgba() string."""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def _apply_axis_style(fig, xaxis_title="", yaxis_title=""):
     """Áp dụng style trục thống nhất."""
     fig.update_xaxes(
@@ -1715,8 +1722,7 @@ def create_risk_profile_radar(profiles_data: list[dict]) -> go.Figure:
             name=p["name"],
             line=dict(color=p["color"], width=2),
             fill="toself",
-            fillcolor=p["color"].replace(")", ",0.08)").replace("rgb", "rgba")
-            if "rgb" in p["color"] else p["color"] + "14",
+            fillcolor=_hex_to_rgba(p["color"], 0.08),
         ))
 
     fig.update_layout(
