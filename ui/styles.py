@@ -106,14 +106,11 @@ def inject_custom_css():
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 46px;
-            height: 46px;
-            border-radius: 14px;
-            background: #FFFFFF;
-            box-shadow: 0 6px 20px rgba(255,255,255,0.12);
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
+            color: #F0F4FF;
             margin-bottom: 10px;
+            opacity: 0.85;
         }
         .sb-brand-title {
             font-size: 1.15rem;
@@ -565,17 +562,14 @@ def inject_custom_css():
             border-bottom: 1px solid #2E3348;
         }
         .section-title-icon {
-            width: 38px;
-            height: 38px;
-            background: #FFFFFF;
-            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.1rem;
+            font-size: 1.25rem;
             font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
-            box-shadow: 0 4px 12px rgba(255,255,255,0.12);
+            color: #F0F4FF;
             flex-shrink: 0;
+            opacity: 0.7;
         }
         .section-title-text {
             font-size: 1.15rem;
