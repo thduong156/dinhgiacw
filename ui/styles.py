@@ -43,17 +43,6 @@ def inject_custom_css():
             text-rendering: optimizeLegibility;
         }
 
-        /* Enable Fira Code math ligatures */
-        code, pre, [class*="mono"], .sb-dash-cw-name, .sb-metric-mini-value,
-        .sb-time-bar-value, .sb-cw-card-name, .sb-cw-card-stat, .sb-cw-card-pnl,
-        .custom-metric-value, .signal-score, .score-card-value, .best-card-score,
-        .medal-card-score, .batch-stat-card-value, .daily-stat-card-value,
-        .table-container-badge, .sb-portfolio-count-badge .count-num,
-        div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-            font-feature-settings: "liga" 1, "calt" 1;
-            -webkit-font-feature-settings: "liga" 1, "calt" 1;
-        }
-
         .stApp {
             background: #0E1117;
         }
