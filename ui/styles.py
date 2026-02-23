@@ -11,6 +11,8 @@ def inject_custom_css():
         /* ===== GLOBAL FONT OVERRIDE — Fira Code everywhere ===== */
         *, *::before, *::after {
             font-family: 'Fira Code', 'Noto Sans Symbols 2', monospace !important;
+            font-feature-settings: "liga" 0, "calt" 0 !important;
+            -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
         }
         /* Preserve Noto Sans Symbols 2 for icon containers */
         .section-title-icon, .sb-brand-icon, .sb-empty-state-icon,
