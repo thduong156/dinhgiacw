@@ -8,6 +8,16 @@ def inject_custom_css():
         /* ===== GOOGLE FONTS ===== */
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+Symbols+2&display=swap');
 
+        /* ===== GLOBAL FONT OVERRIDE — Fira Code everywhere ===== */
+        *, *::before, *::after {
+            font-family: 'Fira Code', 'Noto Sans Symbols 2', monospace !important;
+        }
+        /* Preserve Noto Sans Symbols 2 for icon containers */
+        .section-title-icon, .sb-brand-icon, .sb-empty-state-icon,
+        .tab-empty-state-icon, .medal-card-icon {
+            font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', 'Fira Code', monospace !important;
+        }
+
         /*
          * COLOR PALETTE — High Contrast Dark
          * bg-base:    #0E1117  (nền chính)
