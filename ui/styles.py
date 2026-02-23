@@ -6,7 +6,7 @@ def inject_custom_css():
     st.markdown("""
     <style>
         /* ===== GOOGLE FONTS ===== */
-        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+Symbols+2&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+Symbols+2&display=swap');
 
         /*
          * COLOR PALETTE — High Contrast Dark
@@ -24,7 +24,7 @@ def inject_custom_css():
 
         /* ===== GLOBAL ===== */
         html, body, [class*="css"] {
-            font-family: 'Crimson Pro', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', Georgia, serif;
+            font-family: 'Fira Code', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', monospace;
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -59,7 +59,7 @@ def inject_custom_css():
         .main-header {
             font-size: 2rem;
             font-weight: 700;
-            font-family: 'Playfair Display', Georgia, serif;
+            font-family: 'Fira Code', monospace;
             color: #F0F4FF;
             text-align: center;
             padding: 0.4rem 0 0.3rem 0;
@@ -115,7 +115,7 @@ def inject_custom_css():
         .sb-brand-title {
             font-size: 1.15rem;
             font-weight: 700;
-            font-family: 'Playfair Display', Georgia, serif;
+            font-family: 'Fira Code', monospace;
             color: #F0F4FF;
             letter-spacing: 1.5px;
             text-transform: uppercase;
@@ -499,7 +499,7 @@ def inject_custom_css():
             border-radius: 11px;
             padding: 10px 16px;
             font-weight: 500;
-            font-family: 'Crimson Pro', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', Georgia, serif;
+            font-family: 'Fira Code', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', monospace;
             font-size: 0.82rem;
             color: #7A84A0;
             transition: all 0.2s ease;
@@ -514,7 +514,7 @@ def inject_custom_css():
             background: #FFFFFF !important;
             color: #0E1117 !important;
             font-weight: 700 !important;
-            font-family: 'Crimson Pro', Georgia, serif !important;
+            font-family: 'Fira Code', monospace !important;
             box-shadow: 0 2px 10px rgba(255,255,255,0.15);
         }
 
@@ -586,7 +586,7 @@ def inject_custom_css():
         .section-title-text {
             font-size: 1.15rem;
             font-weight: 600;
-            font-family: 'Playfair Display', 'Noto Sans Symbols 2', Georgia, serif;
+            font-family: 'Fira Code', 'Noto Sans Symbols 2', monospace;
             color: #F0F4FF;
             letter-spacing: 0.3px;
         }
@@ -1326,7 +1326,7 @@ def inject_custom_css():
             font-weight: 700;
         }
         .rp-name {
-            font-family: 'Playfair Display', Georgia, serif;
+            font-family: 'Fira Code', monospace;
             font-size: 0.82rem;
             font-weight: 600;
             color: #F0F4FF;
@@ -1388,7 +1388,7 @@ def inject_custom_css():
             margin: 8px 0;
         }
         .strategy-card-title {
-            font-family: 'Playfair Display', Georgia, serif;
+            font-family: 'Fira Code', monospace;
             font-size: 0.95rem;
             font-weight: 600;
             color: #F0F4FF;

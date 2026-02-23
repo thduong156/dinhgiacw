@@ -19,7 +19,7 @@ COLORS = {
     "blue": "#3B82F6",
 }
 
-CHART_FONT = dict(family="Crimson Pro, Georgia, serif", size=12, color="#CBD5E0")
+CHART_FONT = dict(family="Fira Code, monospace", size=12, color="#CBD5E0")
 
 COMMON_LAYOUT = dict(
     template=CHART_TEMPLATE,

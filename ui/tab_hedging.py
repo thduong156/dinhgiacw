@@ -191,7 +191,7 @@ def _render_risk_profile_selector() -> str:
                 f'border-radius:12px;padding:14px 10px;text-align:center;box-shadow:{shadow};">'
                 f'<div style="font-size:1.6rem;font-family:Fira Code,monospace;'
                 f'font-weight:700;color:{p["color"]};margin-bottom:4px">{p["icon"]}</div>'
-                f'<div style="font-family:Playfair Display,Georgia,serif;'
+                f'<div style="font-family:Fira Code,monospace;'
                 f'font-size:0.82rem;font-weight:600;color:#F0F4FF;margin-bottom:4px">{p["name_vi"]}</div>'
                 f'<div style="font-size:0.7rem;color:#7A84A0;line-height:1.4;'
                 f'margin-bottom:6px">{p["description"]}</div>'
