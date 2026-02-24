@@ -14,6 +14,15 @@ def inject_custom_css():
             font-feature-settings: "liga" 0, "calt" 0 !important;
             -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
         }
+        /* Khôi phục Material Icons cho Streamlit internal icons */
+        span[data-testid="stIconMaterial"],
+        .material-symbols-rounded,
+        .material-symbols-outlined,
+        .material-symbols-sharp {
+            font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
+            font-feature-settings: "liga" 1 !important;
+            -webkit-font-feature-settings: "liga" 1 !important;
+        }
         /* Preserve Noto Sans Symbols 2 for icon containers */
         .section-title-icon, .sb-brand-icon, .sb-empty-state-icon,
         .tab-empty-state-icon, .medal-card-icon {
