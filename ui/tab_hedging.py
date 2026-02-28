@@ -1,10 +1,12 @@
 """
 Tab Phòng Hộ Danh Mục — Kết hợp Cổ Phiếu + Chứng Quyền.
 
-Hỗ trợ:
-  - Nhập vị thế cổ phiếu (add/edit/delete)
-  - 5 nhóm khẩu vị rủi ro
-  - 3 chiến lược: Protective Put, Delta Hedging, Combined
+Lý thuyết nền tảng:
+  - Hàm hữu dụng kỳ vọng: U = E[r] - (A/2)·σ²
+  - A = hệ số ngại rủi ro (Risk Aversion Coefficient)
+  - 3 loại nhà đầu tư dựa trên A: Thận Trọng (A=6), Cân Bằng (A=3), Tích Cực (A=1)
+  - Danh mục tối ưu = argmax U trên Efficient Frontier
+  - Đường đẳng hữu dụng (Indifference Curve): μ = (A/2)·σ² + U₀
 """
 
 import streamlit as st
@@ -12,13 +14,23 @@ import pandas as pd
 import numpy as np
 
 from core.hedging import (
-    RISK_PROFILES,
     StockPosition,
     calculate_net_greeks,
     protective_put_analysis,
     delta_hedge_recommendation,
     build_hedged_portfolio,
     generate_payoff_data,
+)
+from core.warrant import WarrantAnalyzer
+from core.markowitz import (
+    CWAsset,
+    estimate_cw_return,
+    estimate_cw_volatility,
+    build_correlation_matrix,
+    generate_efficient_frontier,
+    find_optimal_for_investor,
+    portfolio_metrics,
+    build_covariance_matrix,
 )
 from ui.components import (
     section_title,
@@ -35,20 +47,61 @@ from ui.components import (
 from ui.charts import (
     create_hedging_payoff_chart,
     create_delta_exposure_chart,
-    create_risk_profile_radar,
+    create_efficient_frontier_chart,
 )
+
+
+# ── Định nghĩa 3 loại nhà đầu tư ────────────────────────────────
+
+INVESTOR_TYPES = {
+    "conservative": {
+        "name_vi":    "Thận Trọng",
+        "A":          6.0,
+        "icon":       "◎",
+        "color":      "#3B82F6",
+        "description": "Ưu tiên bảo toàn vốn, chấp nhận lợi nhuận thấp để giảm rủi ro tối đa",
+        "target":     "Gần Min-Variance",
+        "bg":         "rgba(59,130,246,0.08)",
+        "border":     "rgba(59,130,246,0.4)",
+    },
+    "balanced": {
+        "name_vi":    "Cân Bằng",
+        "A":          3.0,
+        "icon":       "◈",
+        "color":      "#F59E0B",
+        "description": "Cân bằng giữa lợi nhuận và rủi ro, tối đa hoá tỷ lệ Sharpe",
+        "target":     "Gần Max-Sharpe",
+        "bg":         "rgba(245,158,11,0.08)",
+        "border":     "rgba(245,158,11,0.4)",
+    },
+    "aggressive": {
+        "name_vi":    "Tích Cực",
+        "A":          1.0,
+        "icon":       "△",
+        "color":      "#EF4444",
+        "description": "Chấp nhận rủi ro cao để tối đa hoá lợi nhuận kỳ vọng",
+        "target":     "Gần Max-Return",
+        "bg":         "rgba(239,68,68,0.08)",
+        "border":     "rgba(239,68,68,0.4)",
+    },
+}
+
+# Ánh xạ loại nhà đầu tư → tham số delta hedging tương đương
+_INVESTOR_DELTA_TARGET = {
+    "conservative": (0.3, 0.7),    # delta thấp → phòng thủ
+    "balanced":     (0.5, 1.2),    # delta vừa
+    "aggressive":   (0.8, 2.0),    # delta cao → đòn bẩy
+}
 
 
 # ── Helpers ──────────────────────────────────────────────────────
 
 def _get_stock_positions() -> list[StockPosition]:
-    """Lấy danh sách vị thế CP từ session_state."""
     raw = st.session_state.get("stock_positions", [])
     return [StockPosition(**sp) for sp in raw]
 
 
 def _save_stock_positions(positions: list[StockPosition]):
-    """Lưu danh sách vị thế CP vào session_state."""
     st.session_state["stock_positions"] = [
         {"ticker": sp.ticker, "entry_price": sp.entry_price,
          "quantity": sp.quantity, "current_price": sp.current_price}
@@ -57,7 +110,6 @@ def _save_stock_positions(positions: list[StockPosition]):
 
 
 def _get_underlyings_from_portfolio() -> dict:
-    """Lấy dict {ticker_upper: current_price} từ CW portfolio."""
     portfolio = st.session_state.get("cw_portfolio", [])
     result = {}
     for cw in portfolio:
@@ -68,26 +120,67 @@ def _get_underlyings_from_portfolio() -> dict:
 
 
 def _get_cw_portfolio() -> list[dict]:
-    """Lấy CW portfolio từ session_state."""
     return st.session_state.get("cw_portfolio", [])
+
+
+def _build_cw_assets(cw_list: list[dict]) -> list[CWAsset]:
+    """
+    Chuyển danh mục CW → list[CWAsset] để tính Efficient Frontier.
+    Dùng WarrantAnalyzer.full_analysis() + estimate_cw_return/volatility.
+    """
+    assets = []
+    for cw in cw_list:
+        if not cw.get("cw_price") or cw["cw_price"] <= 0:
+            continue
+        if not cw.get("T") or cw["T"] <= 0:
+            continue
+        try:
+            analyzer = WarrantAnalyzer(
+                S=cw["S"], K=cw["K"], T=cw["T"],
+                r=cw["r"], sigma=cw["sigma"],
+                cw_market_price=cw["cw_price"],
+                conversion_ratio=cw["cr"],
+                option_type=cw["option_type"],
+                q=cw.get("q", 0.0),
+            )
+            analysis = analyzer.full_analysis()
+            cw_input = {
+                "T":              cw["T"],
+                "sigma":          cw["sigma"],
+                "option_type":    cw["option_type"],
+                "cw_price":       cw["cw_price"],
+                "ma_co_so":       cw.get("ma_co_so", "N/A"),
+                "days_remaining": max(int(cw["T"] * 365), 1),
+            }
+            exp_ret = estimate_cw_return(analysis, cw_input)
+            vol     = estimate_cw_volatility(analysis, cw_input)
+            assets.append(CWAsset(
+                name=cw.get("ma_cw", f"CW{len(assets)+1}"),
+                expected_return=exp_ret,
+                volatility=vol,
+                cw_price=cw["cw_price"],
+                ma_co_so=cw.get("ma_co_so", "N/A"),
+                option_type=cw["option_type"],
+                score=cw.get("score", 50),
+            ))
+        except Exception:
+            continue
+    return assets
 
 
 # ── Section 1: Vị Thế Cổ Phiếu ─────────────────────────────────
 
 def _render_stock_positions():
-    """Form nhập và quản lý vị thế cổ phiếu."""
     section_title("▪", "Vị Thế Cổ Phiếu")
 
-    positions = _get_stock_positions()
+    positions  = _get_stock_positions()
     underlyings = _get_underlyings_from_portfolio()
 
-    # Hiển thị vị thế hiện có
     if positions:
-        st.markdown('<div class="stock-pos-grid">', unsafe_allow_html=True)
         cols = st.columns(min(len(positions), 4))
         for i, sp in enumerate(positions):
             with cols[i % len(cols)]:
-                pnl = (sp.current_price - sp.entry_price) * sp.quantity
+                pnl     = (sp.current_price - sp.entry_price) * sp.quantity
                 pnl_pct = ((sp.current_price - sp.entry_price) / sp.entry_price * 100) if sp.entry_price > 0 else 0
                 pnl_color = "#22C55E" if pnl >= 0 else "#EF4444"
                 st.markdown(
@@ -103,9 +196,7 @@ def _render_stock_positions():
                     f'</div>',
                     unsafe_allow_html=True,
                 )
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        # Delete buttons
         del_cols = st.columns(len(positions) + 1)
         for i, sp in enumerate(positions):
             with del_cols[i]:
@@ -114,44 +205,30 @@ def _render_stock_positions():
                     _save_stock_positions(positions)
                     st.rerun()
 
-    # Form thêm CP mới
     with st.expander("+ Thêm vị thế cổ phiếu", expanded=len(positions) == 0):
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            # Suggest tickers from CW portfolio
-            available_tickers = sorted(underlyings.keys())
+            available = sorted(underlyings.keys())
             ticker = st.text_input(
                 "Mã CP",
                 placeholder="VD: MWG, VPB...",
-                help=f"CP cùng mã cơ sở với CW: {', '.join(available_tickers)}" if available_tickers else "",
+                help=f"CP cùng mã cơ sở với CW: {', '.join(available)}" if available else "",
                 key="hedging_ticker_input",
             ).strip().upper()
         with c2:
             auto_price = underlyings.get(ticker, 0)
             current_price = st.number_input(
-                "Giá hiện tại",
-                value=float(auto_price) if auto_price > 0 else 0.0,
-                min_value=0.0,
-                step=100.0,
-                format="%.0f",
-                key="hedging_current_price",
+                "Giá hiện tại", value=float(auto_price) if auto_price > 0 else 0.0,
+                min_value=0.0, step=100.0, format="%.0f", key="hedging_current_price",
             )
         with c3:
             entry_price = st.number_input(
-                "Giá mua",
-                value=float(auto_price) if auto_price > 0 else 0.0,
-                min_value=0.0,
-                step=100.0,
-                format="%.0f",
-                key="hedging_entry_price",
+                "Giá mua", value=float(auto_price) if auto_price > 0 else 0.0,
+                min_value=0.0, step=100.0, format="%.0f", key="hedging_entry_price",
             )
         with c4:
             quantity = st.number_input(
-                "Số lượng",
-                value=100,
-                min_value=1,
-                step=100,
-                key="hedging_qty",
+                "Số lượng", value=100, min_value=1, step=100, key="hedging_qty",
             )
 
         if st.button("+ Thêm cổ phiếu", key="add_stock_btn"):
@@ -165,113 +242,236 @@ def _render_stock_positions():
     return positions
 
 
-# ── Section 2: Chọn Khẩu Vị Rủi Ro ─────────────────────────────
+# ── Section 2: Chọn Loại Nhà Đầu Tư ─────────────────────────────
 
-def _render_risk_profile_selector() -> str:
-    """5 buttons chọn risk profile. Returns profile key."""
-    section_title("⊕", "Chọn Khẩu Vị Rủi Ro")
+def _render_investor_selector() -> str:
+    """3 card button chọn loại nhà đầu tư theo hàm hữu dụng. Returns key."""
+    section_title("⊕", "Loại Nhà Đầu Tư — Hàm Hữu Dụng U = E[r] − (A/2)·σ²")
 
-    if "hedging_profile" not in st.session_state:
-        st.session_state["hedging_profile"] = "moderate"
+    if "hedging_investor_type" not in st.session_state:
+        st.session_state["hedging_investor_type"] = "balanced"
 
-    profile_keys = list(RISK_PROFILES.keys())
-    cols = st.columns(5)
+    st.markdown(
+        '<div class="info-box">'
+        '<b>Hàm hữu dụng kỳ vọng:</b> U = E[r] − (A/2)·σ²<br>'
+        '&bull; <b>A</b> = hệ số ngại rủi ro (Risk Aversion Coefficient)<br>'
+        '&bull; A lớn → ngại rủi ro cao → chọn danh mục σ thấp<br>'
+        '&bull; A nhỏ → ưa rủi ro → chọn danh mục E[r] cao<br>'
+        '&bull; Danh mục tối ưu = điểm trên Efficient Frontier tiếp xúc đường đẳng hữu dụng'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
-    for i, key in enumerate(profile_keys):
-        p = RISK_PROFILES[key]
-        is_selected = st.session_state["hedging_profile"] == key
-        stock_lo, stock_hi = [int(x * 100) for x in p["target_stock_pct"]]
-        cw_lo, cw_hi = [int(x * 100) for x in p["target_cw_pct"]]
+    cols = st.columns(3)
+    for i, (key, inv) in enumerate(INVESTOR_TYPES.items()):
+        is_sel = st.session_state["hedging_investor_type"] == key
+        border_w = "2px" if is_sel else "1px"
+        bg       = inv["bg"] if is_sel else "#1A1D27"
+        shadow   = f"0 0 18px {inv['border']}" if is_sel else "none"
 
         with cols[i]:
-            border_color = "#FFFFFF" if is_selected else "#2E3348"
-            bg = "#222633" if is_selected else "#1A1D27"
-            shadow = "0 0 15px rgba(255,255,255,0.08)" if is_selected else "none"
             st.markdown(
-                f'<div style="background:{bg};border:{"2px" if is_selected else "1px"} solid {border_color};'
-                f'border-radius:12px;padding:14px 10px;text-align:center;box-shadow:{shadow};">'
-                f'<div style="font-size:1.6rem;font-family:Fira Code,monospace;'
-                f'font-weight:700;color:{p["color"]};margin-bottom:4px">{p["icon"]}</div>'
-                f'<div style="font-family:Fira Code,monospace;'
-                f'font-size:0.82rem;font-weight:600;color:#F0F4FF;margin-bottom:4px">{p["name_vi"]}</div>'
-                f'<div style="font-size:0.7rem;color:#7A84A0;line-height:1.4;'
-                f'margin-bottom:6px">{p["description"]}</div>'
-                f'<div style="font-family:Fira Code,monospace;font-size:0.68rem;color:#B8C2DB;'
-                f'padding:3px 6px;background:rgba(255,255,255,0.04);border-radius:4px;'
-                f'display:inline-block">{stock_lo}-{stock_hi}% CP | {cw_lo}-{cw_hi}% CW</div>'
+                f'<div style="background:{bg};border:{border_w} solid {inv["border"]};'
+                f'border-radius:14px;padding:16px 12px;text-align:center;'
+                f'box-shadow:{shadow};margin-bottom:4px;">'
+                f'<div style="font-size:1.8rem;color:{inv["color"]};margin-bottom:6px;">'
+                f'{inv["icon"]}</div>'
+                f'<div style="font-size:0.9rem;font-weight:700;color:#F0F4FF;margin-bottom:4px;">'
+                f'{inv["name_vi"]}</div>'
+                f'<div style="font-family:Fira Code,monospace;font-size:1.1rem;'
+                f'font-weight:800;color:{inv["color"]};margin-bottom:6px;">A = {inv["A"]:.0f}</div>'
+                f'<div style="font-size:0.7rem;color:#8896AB;line-height:1.5;margin-bottom:8px;">'
+                f'{inv["description"]}</div>'
+                f'<div style="font-size:0.68rem;color:{inv["color"]};'
+                f'background:rgba(255,255,255,0.05);border-radius:6px;padding:3px 8px;'
+                f'display:inline-block;">{inv["target"]}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
             if st.button(
-                p["name_vi"],
-                key=f"rp_btn_{key}",
+                f'{"✓ " if is_sel else ""}{inv["name_vi"]}',
+                key=f"inv_btn_{key}",
                 use_container_width=True,
-                type="primary" if is_selected else "secondary",
+                type="primary" if is_sel else "secondary",
             ):
-                st.session_state["hedging_profile"] = key
+                st.session_state["hedging_investor_type"] = key
                 st.rerun()
 
-    return st.session_state["hedging_profile"]
+    return st.session_state["hedging_investor_type"]
 
 
-# ── Section 3: Tổng Quan Danh Mục ───────────────────────────────
+# ── Section 3: Đường Cong Hiệu Quả ──────────────────────────────
 
-def _render_portfolio_overview(stocks, cw_list, profile_key):
-    """Hiển thị Net Greeks, tỷ trọng, so sánh target."""
-    section_title("△", "Tổng Quan Danh Mục Phòng Hộ")
+def _render_efficient_frontier(cw_list: list[dict], investor_key: str):
+    """Tính toán và vẽ Efficient Frontier + điểm tối ưu 3 loại nhà đầu tư."""
+    section_title("◇", "Đường Cong Hiệu Quả Markowitz")
 
-    profile = RISK_PROFILES[profile_key]
-    greeks = calculate_net_greeks(stocks, cw_list)
+    assets = _build_cw_assets(cw_list)
 
-    # Row 1: Value breakdown
-    c1, c2, c3, c4, c5 = st.columns(5)
+    if len(assets) < 2:
+        st.markdown(
+            '<div class="info-box" style="border-color:rgba(245,158,11,0.4);">'
+            '⚠ Cần ít nhất <b>2 CW</b> trong danh mục để tính Efficient Frontier.<br>'
+            'Thêm CW vào danh mục ở sidebar để bật tính năng này.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        return
 
-    total_val = greeks["total_value"]
-    with c1:
-        colored_metric("Tổng Giá Trị", f"{format_vnd(total_val)} đ", color="#F0F4FF")
+    with st.spinner("Đang tính Efficient Frontier..."):
+        corr     = build_correlation_matrix(assets)
+        cov      = build_covariance_matrix(assets, corr)
+        frontier = generate_efficient_frontier(assets, corr, n_portfolios=6000)
 
-    # Stock/CW ratio vs target
-    stock_pct = greeks["stock_pct"]
-    target_lo, target_hi = [x * 100 for x in profile["target_stock_pct"]]
-    in_target = target_lo <= stock_pct <= target_hi
-    ratio_color = "#22C55E" if in_target else "#F59E0B"
-    with c2:
+        # Tính danh mục tối ưu cho 3 loại nhà đầu tư
+        investor_points = []
+        for key, inv in INVESTOR_TYPES.items():
+            opt = find_optimal_for_investor(frontier, inv["A"])
+            investor_points.append({
+                "key":         key,
+                "name_vi":     inv["name_vi"],
+                "A":           inv["A"],
+                "color":       inv["color"],
+                "port_return": opt["port_return"],
+                "port_vol":    opt["port_vol"],
+                "utility":     opt["utility"],
+                "sharpe":      opt["sharpe"],
+                "weights":     opt["weights"],
+            })
+
+    # ── Hiển thị 3 metrics tóm tắt ──
+    sel_ip = next(ip for ip in investor_points if ip["key"] == investor_key)
+    inv    = INVESTOR_TYPES[investor_key]
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
         colored_metric(
-            f"CP / CW",
-            f"{stock_pct:.0f}% / {greeks['cw_pct']:.0f}%",
-            color=ratio_color,
-            delta=f"Target: {target_lo:.0f}-{target_hi:.0f}%",
-            delta_color=ratio_color,
+            f"Nhà đầu tư {inv['name_vi']}",
+            f"A = {inv['A']:.0f}",
+            color=inv["color"],
+            delta="Hệ số ngại rủi ro",
+        )
+    with m2:
+        colored_metric(
+            "E[r] Tối Ưu",
+            f"{sel_ip['port_return']*100:+.2f}%",
+            color="#22C55E" if sel_ip["port_return"] > 0 else "#EF4444",
+        )
+    with m3:
+        colored_metric(
+            "σ Danh Mục",
+            f"{sel_ip['port_vol']*100:.2f}%",
+            color=inv["color"],
+        )
+    with m4:
+        colored_metric(
+            "Hữu Dụng U",
+            f"{sel_ip['utility']:.4f}",
+            color=inv["color"],
+            delta=f"Sharpe = {sel_ip['sharpe']:.3f}",
         )
 
-    # Net Delta vs target
-    delta_lo, delta_hi = profile["target_net_delta"]
-    net_d = greeks["net_delta"]
-    in_delta = delta_lo <= net_d <= delta_hi if total_val > 0 else True
-    delta_color = "#22C55E" if in_delta else "#EF4444"
+    # ── Chart ──
+    chart_container("Efficient Frontier — Không gian (σ, E[r])")
+    fig = create_efficient_frontier_chart(frontier, investor_points, assets, investor_key)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    chart_container_end()
+
+    # ── Bảng trọng số tối ưu cho loại đang chọn ──
+    section_title("≡", f"Trọng Số Tối Ưu — {inv['name_vi']} (A = {inv['A']:.0f})")
+
+    st.markdown(
+        f'<div class="info-box" style="border-color:{inv["border"]};">'
+        f'Công thức: <b>U = E[r] − ({inv["A"]:.0f}/2)·σ² = E[r] − {inv["A"]/2:.1f}·σ²</b><br>'
+        f'Danh mục tối ưu: E[r] = {sel_ip["port_return"]*100:+.2f}%  |  '
+        f'σ = {sel_ip["port_vol"]*100:.2f}%  |  '
+        f'U* = {sel_ip["utility"]:.4f}  |  '
+        f'Sharpe = {sel_ip["sharpe"]:.3f}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Cards trọng số
+    n = len(assets)
+    weight_cols = st.columns(min(n, 4))
+    for i, asset in enumerate(assets):
+        w = sel_ip["weights"][i]
+        w_color = inv["color"] if w > 0.15 else "#94A3B8"
+        with weight_cols[i % min(n, 4)]:
+            colored_metric(
+                asset.name,
+                f"{w*100:.1f}%",
+                color=w_color,
+                delta=f"E[r]={asset.expected_return*100:+.1f}% | σ={asset.volatility*100:.1f}%",
+                delta_color="#8896AB",
+            )
+
+    # Bảng so sánh 3 loại
+    compare_rows = []
+    for ip in investor_points:
+        compare_rows.append({
+            "Loại NĐT": f"{INVESTOR_TYPES[ip['key']]['icon']} {ip['name_vi']}",
+            "Hệ số A": f"{ip['A']:.0f}",
+            "E[r] (%)": f"{ip['port_return']*100:+.2f}%",
+            "σ (%)": f"{ip['port_vol']*100:.2f}%",
+            "Hữu Dụng U": f"{ip['utility']:.4f}",
+            "Sharpe": f"{ip['sharpe']:.3f}",
+        })
+
+    table_container("So Sánh Danh Mục Tối Ưu — 3 Loại Nhà Đầu Tư", badge="3 loại")
+    render_table(pd.DataFrame(compare_rows))
+    table_container_end()
+
+    return investor_points, sel_ip
+
+
+# ── Section 4: Tổng Quan Danh Mục ───────────────────────────────
+
+def _render_portfolio_overview(stocks, cw_list, investor_key):
+    section_title("△", "Tổng Quan Danh Mục Phòng Hộ")
+
+    inv    = INVESTOR_TYPES[investor_key]
+    greeks = calculate_net_greeks(stocks, cw_list)
+
+    delta_lo, delta_hi = _INVESTOR_DELTA_TARGET[investor_key]
+    total_val = greeks["total_value"]
+    stock_pct = greeks["stock_pct"]
+    net_d     = greeks["net_delta"]
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        colored_metric("Tổng Giá Trị", f"{format_vnd(total_val)} đ", color="#F0F4FF")
+    with c2:
+        colored_metric(
+            "CP / CW",
+            f"{stock_pct:.0f}% / {greeks['cw_pct']:.0f}%",
+            color=inv["color"],
+            delta=f"Loại: {inv['name_vi']}",
+            delta_color=inv["color"],
+        )
     with c3:
+        in_delta  = delta_lo <= net_d <= delta_hi if total_val > 0 else True
+        d_color   = "#22C55E" if in_delta else "#EF4444"
         colored_metric(
             "Net Delta", f"{net_d:,.1f}",
-            color=delta_color,
+            color=d_color,
             delta=f"Target: {delta_lo:.1f} – {delta_hi:.1f}",
-            delta_color=delta_color,
+            delta_color=d_color,
         )
     with c4:
         colored_metric("Net Gamma", f"{greeks['net_gamma']:,.4f}", color="#A78BFA")
     with c5:
-        theta_val = greeks["net_theta"]
+        theta_val   = greeks["net_theta"]
         theta_color = "#EF4444" if theta_val < 0 else "#22C55E"
         colored_metric("Net Theta", f"{format_vnd(theta_val)} /ngày", color=theta_color)
 
     return greeks
 
 
-# ── Section 4: Chiến Lược Phòng Hộ ──────────────────────────────
+# ── Section 5: Chiến Lược Phòng Hộ ──────────────────────────────
 
-def _render_strategies(stocks, cw_list, profile_key, greeks):
-    """Render 3 chiến lược phòng hộ."""
+def _render_strategies(stocks, cw_list, investor_key, greeks):
     section_title("◇", "Chiến Lược Phòng Hộ")
-    profile = RISK_PROFILES[profile_key]
 
     strat_tabs = st.tabs([
         "▪ Protective Put",
@@ -279,7 +479,7 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
         "◎ Combined Portfolio",
     ])
 
-    # ── Strategy A: Protective Put ──
+    # ── A: Protective Put ──
     with strat_tabs[0]:
         put_cw_list = [cw for cw in cw_list if cw.get("option_type") == "put"]
 
@@ -288,7 +488,7 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
         elif not put_cw_list:
             st.info(
                 "Không có CW Put trong danh mục. "
-                "Thêm CW Put cùng mã cơ sở với cổ phiếu để sử dụng chiến lược Protective Put."
+                "Thêm CW Put cùng mã cơ sở với cổ phiếu để sử dụng chiến lược này."
             )
         else:
             for sp in stocks:
@@ -303,7 +503,6 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
                     f'</div>',
                     unsafe_allow_html=True,
                 )
-
                 for r in results:
                     mc1, mc2, mc3, mc4 = st.columns(4)
                     with mc1:
@@ -316,14 +515,13 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
                     with mc4:
                         colored_metric("Break-Even", f"{format_vnd(r['break_even'])} đ", color="#F0F4FF")
 
-                    # Payoff chart
                     if r.get("payoff_data"):
-                        payoff = r["payoff_data"]
+                        pd_data = r["payoff_data"]
                         chart_data = {
-                            "prices": payoff["prices"],
-                            "stock_pnl": payoff["stock_pnl"],
-                            "cw_pnl": payoff["put_pnl"],
-                            "total_pnl": payoff["total_pnl"],
+                            "prices":     pd_data["prices"],
+                            "stock_pnl":  pd_data["stock_pnl"],
+                            "cw_pnl":     pd_data["put_pnl"],
+                            "total_pnl":  pd_data["total_pnl"],
                             "break_evens": [],
                         }
                         chart_container("Payoff Diagram")
@@ -335,39 +533,41 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
                         chart_container_end()
                     section_divider()
 
-    # ── Strategy B: Delta Hedging ──
+    # ── B: Delta Hedging ──
     with strat_tabs[1]:
-        target_lo, target_hi = profile["target_net_delta"]
-        target_mid = (target_lo + target_hi) / 2
+        delta_lo, delta_hi = _INVESTOR_DELTA_TARGET[investor_key]
+        target_mid = (delta_lo + delta_hi) / 2
+        inv = INVESTOR_TYPES[investor_key]
 
         st.markdown(
-            f"**Target Net Delta:** {target_lo:.1f} – {target_hi:.1f} "
-            f"(giữa = {target_mid:.1f})"
+            f'<div class="info-box" style="border-color:{inv["border"]};">'
+            f'Target Net Delta cho <b>{inv["name_vi"]}</b> (A={inv["A"]:.0f}): '
+            f'<b>{delta_lo:.1f} – {delta_hi:.1f}</b>'
+            f'</div>',
+            unsafe_allow_html=True,
         )
 
         target_input = st.slider(
             "Target Delta",
-            min_value=float(target_lo),
-            max_value=float(target_hi),
+            min_value=float(delta_lo),
+            max_value=float(delta_hi),
             value=float(target_mid),
-            step=0.1,
+            step=0.05,
             key="hedge_target_delta",
         )
 
         rec = delta_hedge_recommendation(stocks, cw_list, target_input)
 
-        # Delta gauge
         mc1, mc2, mc3 = st.columns(3)
         with mc1:
             d_color = "#22C55E" if abs(rec["delta_gap"]) < rec["rebalance_trigger"] else "#EF4444"
             colored_metric("Delta Hiện Tại", f"{rec['current_delta']:,.1f}", color=d_color)
         with mc2:
-            colored_metric("Delta Mục Tiêu", f"{rec['target_delta']:.1f}", color="#F0F4FF")
+            colored_metric("Delta Mục Tiêu", f"{rec['target_delta']:.2f}", color="#F0F4FF")
         with mc3:
             gap_color = "#22C55E" if abs(rec["delta_gap"]) < 5 else "#F59E0B"
             colored_metric("Delta Gap", f"{rec['delta_gap']:+,.1f}", color=gap_color)
 
-        # Recommendations
         if rec["recommendations"]:
             st.markdown('<div class="strategy-card">', unsafe_allow_html=True)
             st.markdown("**Đề xuất điều chỉnh:**")
@@ -375,7 +575,6 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
                 st.markdown(f"- {r}")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Delta exposure chart
         if rec["per_ticker"]:
             chart_container("Delta Exposure")
             st.plotly_chart(
@@ -385,15 +584,23 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
             )
             chart_container_end()
 
-    # ── Strategy C: Combined Portfolio ──
+    # ── C: Combined Portfolio ──
     with strat_tabs[2]:
+        # Dùng profile_key tương ứng với investor_key cho build_hedged_portfolio
+        _profile_map = {
+            "conservative": "conservative",
+            "balanced":     "moderate",
+            "aggressive":   "aggressive",
+        }
+        profile_key = _profile_map.get(investor_key, "moderate")
         result = build_hedged_portfolio(stocks, cw_list, profile_key)
 
         if result["recommendations"]:
-            st.markdown('<div class="strategy-card">', unsafe_allow_html=True)
+            inv = INVESTOR_TYPES[investor_key]
             st.markdown(
+                f'<div class="strategy-card">'
                 f'<div class="strategy-card-title">'
-                f'Đề Xuất — {profile["name_vi"]}</div>',
+                f'Đề Xuất — {inv["name_vi"]} (A = {inv["A"]:.0f})</div>',
                 unsafe_allow_html=True,
             )
             for r in result["recommendations"]:
@@ -405,7 +612,6 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
                 for ec in result["excluded_cw"]:
                     st.caption(f"**{ec['cw'].get('ma_cw', '')}** — {ec['reason']}")
 
-        # Payoff chart cho combined portfolio
         payoff = generate_payoff_data(stocks, cw_list)
         if payoff["prices"]:
             chart_container("Payoff Tổng Hợp")
@@ -417,48 +623,47 @@ def _render_strategies(stocks, cw_list, profile_key, greeks):
             chart_container_end()
 
 
-# ── Section 5: Bảng Phân Bổ Chi Tiết ────────────────────────────
+# ── Section 6: Bảng Phân Bổ Chi Tiết ────────────────────────────
 
 def _render_allocation_table(stocks, cw_list, greeks):
-    """Bảng tổng hợp tất cả vị thế CP + CW."""
     section_title("≡", "Bảng Phân Bổ Chi Tiết")
 
-    rows = []
+    rows      = []
     total_val = greeks["total_value"]
 
     for sp in stocks:
-        val = sp.current_price * sp.quantity
+        val    = sp.current_price * sp.quantity
         weight = (val / total_val * 100) if total_val > 0 else 0
-        pnl = (sp.current_price - sp.entry_price) * sp.quantity
+        pnl    = (sp.current_price - sp.entry_price) * sp.quantity
         rows.append({
             "Loại": "CP",
-            "Mã": sp.ticker.upper(),
-            "Giá": format_vnd(sp.current_price),
-            "SL": f"{sp.quantity:,}",
-            "Giá Trị": format_vnd(val),
-            "Tỷ Trọng": f"{weight:.1f}%",
-            "Delta": f"{sp.quantity:,}",
-            "PnL": format_vnd(pnl),
+            "Mã":        sp.ticker.upper(),
+            "Giá":       format_vnd(sp.current_price),
+            "SL":        f"{sp.quantity:,}",
+            "Giá Trị":   format_vnd(val),
+            "Tỷ Trọng":  f"{weight:.1f}%",
+            "Delta":     f"{sp.quantity:,}",
+            "PnL":       format_vnd(pnl),
         })
 
     from core.hedging import _make_analyzer
     for cw in cw_list:
-        qty = cw.get("quantity") or 0
-        val = cw["cw_price"] * qty
+        qty    = cw.get("quantity") or 0
+        val    = cw["cw_price"] * qty
         weight = (val / total_val * 100) if total_val > 0 else 0
-        entry = cw.get("entry_price") or cw["cw_price"]
-        pnl = (cw["cw_price"] - entry) * qty
-        analyzer = _make_analyzer(cw)
-        d = analyzer.greeks.delta() * qty
+        entry  = cw.get("entry_price") or cw["cw_price"]
+        pnl    = (cw["cw_price"] - entry) * qty
+        az     = _make_analyzer(cw)
+        d      = az.greeks.delta() * qty
         rows.append({
-            "Loại": f"CW ({cw.get('option_type', 'call')})",
-            "Mã": cw.get("ma_cw", "").upper(),
-            "Giá": format_vnd(cw["cw_price"]),
-            "SL": f"{qty:,}",
-            "Giá Trị": format_vnd(val),
-            "Tỷ Trọng": f"{weight:.1f}%",
-            "Delta": f"{d:,.2f}",
-            "PnL": format_vnd(pnl),
+            "Loại":      f"CW ({cw.get('option_type', 'call')})",
+            "Mã":        cw.get("ma_cw", "").upper(),
+            "Giá":       format_vnd(cw["cw_price"]),
+            "SL":        f"{qty:,}",
+            "Giá Trị":   format_vnd(val),
+            "Tỷ Trọng":  f"{weight:.1f}%",
+            "Delta":     f"{d:,.2f}",
+            "PnL":       format_vnd(pnl),
         })
 
     if rows:
@@ -466,47 +671,13 @@ def _render_allocation_table(stocks, cw_list, greeks):
         render_table(pd.DataFrame(rows))
         table_container_end()
 
-        # CSV export
-        df = pd.DataFrame(rows)
+        df  = pd.DataFrame(rows)
         csv = df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
-            "↓ Tải CSV",
-            csv,
+            "↓ Tải CSV", csv,
             file_name="hedging_portfolio.csv",
             mime="text/csv",
         )
-
-
-# ── Section 6: Risk Profile Comparison ──────────────────────────
-
-def _render_risk_comparison(profile_key):
-    """Radar chart so sánh 5 nhóm rủi ro."""
-    section_title("◎", "So Sánh Các Nhóm Khẩu Vị Rủi Ro")
-
-    # Normalize values to 0-100 scale for radar
-    profiles_data = []
-    for key, p in RISK_PROFILES.items():
-        delta_mid = sum(p["target_net_delta"]) / 2
-        lev = p["max_leverage"]
-        stock_mid = sum(p["target_stock_pct"]) / 2
-
-        profiles_data.append({
-            "name": p["name_vi"],
-            "color": p["color"],
-            "expected_return": min(100, delta_mid * 80 + 10),
-            "risk": min(100, lev / 12 * 100),
-            "net_delta_norm": min(100, delta_mid * 100),
-            "leverage_norm": min(100, lev / 12 * 100),
-            "protection_cost_norm": max(0, 100 - stock_mid * 100),
-        })
-
-    chart_container("Radar Chart")
-    st.plotly_chart(
-        create_risk_profile_radar(profiles_data),
-        use_container_width=True,
-        config={"displayModeBar": False},
-    )
-    chart_container_end()
 
 
 # ── Main Render ──────────────────────────────────────────────────
@@ -529,25 +700,25 @@ def render_hedging_tab():
 
     section_divider()
 
-    # Section 2: Risk profile
-    profile_key = _render_risk_profile_selector()
+    # Section 2: Chọn loại nhà đầu tư
+    investor_key = _render_investor_selector()
 
     section_divider()
 
-    # Section 3: Portfolio overview
-    greeks = _render_portfolio_overview(stocks, cw_list, profile_key)
+    # Section 3: Đường cong hiệu quả
+    _render_efficient_frontier(cw_list, investor_key)
 
     section_divider()
 
-    # Section 4: Strategies
-    _render_strategies(stocks, cw_list, profile_key, greeks)
+    # Section 4: Tổng quan danh mục
+    greeks = _render_portfolio_overview(stocks, cw_list, investor_key)
 
     section_divider()
 
-    # Section 5: Allocation table
+    # Section 5: Chiến lược phòng hộ
+    _render_strategies(stocks, cw_list, investor_key, greeks)
+
+    section_divider()
+
+    # Section 6: Bảng phân bổ
     _render_allocation_table(stocks, cw_list, greeks)
-
-    section_divider()
-
-    # Section 6: Risk comparison
-    _render_risk_comparison(profile_key)

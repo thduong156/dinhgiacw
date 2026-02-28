@@ -1858,3 +1858,193 @@ def create_backtest_pd_chart(df, ma_cw: str):
     )
     _apply_axis_style(fig, "Ngày", "P/D %")
     return fig
+
+
+# ============================================================
+# EFFICIENT FRONTIER CHART
+# ============================================================
+
+def create_efficient_frontier_chart(
+    frontier: dict,
+    investor_points: list[dict],
+    assets: list,
+    selected_type: str | None = None,
+) -> go.Figure:
+    """
+    Vẽ Đường Cong Hiệu Quả Markowitz.
+
+    Parameters
+    ----------
+    frontier        : output của generate_efficient_frontier()
+                      {returns, volatilities, sharpes, weights, max_sharpe_idx, min_vol_idx}
+    investor_points : list of {key, name_vi, A, color, port_return, port_vol, utility, sharpe}
+    assets          : list[CWAsset] — dùng để label các điểm
+    selected_type   : key của investor type đang chọn (để vẽ indifference curve)
+    """
+    vols_pct    = frontier["volatilities"] * 100
+    returns_pct = frontier["returns"] * 100
+    sharpes     = frontier["sharpes"]
+
+    ms_idx  = frontier["max_sharpe_idx"]
+    mv_idx  = frontier["min_vol_idx"]
+
+    fig = go.Figure()
+
+    # ── 1. Scatter toàn bộ danh mục ngẫu nhiên, màu theo Sharpe ──
+    fig.add_trace(go.Scatter(
+        x=vols_pct,
+        y=returns_pct,
+        mode="markers",
+        marker=dict(
+            size=4,
+            color=sharpes,
+            colorscale=[
+                [0.0, "#B91C1C"],
+                [0.3, "#EF4444"],
+                [0.5, "#FFE66D"],
+                [0.7, "#4ADE80"],
+                [1.0, "#15803D"],
+            ],
+            opacity=0.55,
+            colorbar=dict(
+                title=dict(text="Sharpe", font=dict(size=10, color="#8896AB")),
+                thickness=12,
+                len=0.6,
+                x=1.02,
+            ),
+            showscale=True,
+        ),
+        hovertemplate=(
+            "σ: %{x:.2f}%<br>"
+            "E[r]: %{y:.2f}%<br>"
+            "Sharpe: %{marker.color:.3f}<extra></extra>"
+        ),
+        name="Danh mục ngẫu nhiên",
+        showlegend=True,
+    ))
+
+    # ── 2. Điểm Max Sharpe ──
+    fig.add_trace(go.Scatter(
+        x=[vols_pct[ms_idx]],
+        y=[returns_pct[ms_idx]],
+        mode="markers+text",
+        marker=dict(symbol="star", size=16, color="#FFE66D",
+                    line=dict(color="#92400E", width=1.5)),
+        text=["★ Max Sharpe"],
+        textposition="top right",
+        textfont=dict(size=10, color="#FFE66D"),
+        hovertemplate=(
+            f"<b>Max Sharpe</b><br>"
+            f"σ: {vols_pct[ms_idx]:.2f}%<br>"
+            f"E[r]: {returns_pct[ms_idx]:.2f}%<br>"
+            f"Sharpe: {sharpes[ms_idx]:.3f}<extra></extra>"
+        ),
+        name="Max Sharpe",
+        showlegend=True,
+    ))
+
+    # ── 3. Điểm Min Variance ──
+    fig.add_trace(go.Scatter(
+        x=[vols_pct[mv_idx]],
+        y=[returns_pct[mv_idx]],
+        mode="markers+text",
+        marker=dict(symbol="diamond", size=13, color="#A78BFA",
+                    line=dict(color="#5B21B6", width=1.5)),
+        text=["▼ Min Risk"],
+        textposition="top left",
+        textfont=dict(size=10, color="#A78BFA"),
+        hovertemplate=(
+            f"<b>Min Variance</b><br>"
+            f"σ: {vols_pct[mv_idx]:.2f}%<br>"
+            f"E[r]: {returns_pct[mv_idx]:.2f}%<br>"
+            f"Sharpe: {sharpes[mv_idx]:.3f}<extra></extra>"
+        ),
+        name="Min Variance",
+        showlegend=True,
+    ))
+
+    # ── 4. Điểm tối ưu 3 loại nhà đầu tư ──
+    symbols = {"conservative": "circle", "balanced": "square", "aggressive": "triangle-up"}
+    for ip in investor_points:
+        is_sel = (ip["key"] == selected_type)
+        fig.add_trace(go.Scatter(
+            x=[ip["port_vol"] * 100],
+            y=[ip["port_return"] * 100],
+            mode="markers+text",
+            marker=dict(
+                symbol=symbols.get(ip["key"], "circle"),
+                size=18 if is_sel else 13,
+                color=ip["color"],
+                opacity=1.0 if is_sel else 0.75,
+                line=dict(
+                    color="#FFFFFF" if is_sel else ip["color"],
+                    width=2.5 if is_sel else 1,
+                ),
+            ),
+            text=[f"  {ip['name_vi']}"],
+            textposition="middle right",
+            textfont=dict(
+                size=11 if is_sel else 9,
+                color=ip["color"],
+            ),
+            hovertemplate=(
+                f"<b>{ip['name_vi']} (A={ip['A']})</b><br>"
+                f"σ: {ip['port_vol']*100:.2f}%<br>"
+                f"E[r]: {ip['port_return']*100:.2f}%<br>"
+                f"Sharpe: {ip['sharpe']:.3f}<br>"
+                f"U = {ip['utility']:.4f}<extra></extra>"
+            ),
+            name=f"{ip['name_vi']} (A={ip['A']})",
+            showlegend=True,
+        ))
+
+    # ── 5. Đường đẳng hữu dụng (indifference curve) cho loại đang chọn ──
+    sel_ip = next((ip for ip in investor_points if ip["key"] == selected_type), None)
+    if sel_ip is not None:
+        A   = sel_ip["A"]
+        U0  = sel_ip["utility"]
+        # μ = (A/2)·σ² + U₀  →  vẽ trên dải σ ∈ [0, max_frontier_vol + 5%]
+        sigma_grid = np.linspace(0, max(vols_pct) * 1.15 / 100, 200)
+        mu_grid    = (A / 2) * sigma_grid ** 2 + U0
+        # Lọc chỉ phần có μ trong khoảng nhìn thấy
+        visible = mu_grid * 100 <= max(returns_pct) * 1.3
+
+        fig.add_trace(go.Scatter(
+            x=sigma_grid[visible] * 100,
+            y=mu_grid[visible] * 100,
+            mode="lines",
+            line=dict(color=sel_ip["color"], width=1.8, dash="dash"),
+            opacity=0.7,
+            hovertemplate=(
+                f"Đẳng hữu dụng {sel_ip['name_vi']}<br>"
+                f"U₀ = {U0:.4f}, A = {A}<extra></extra>"
+            ),
+            name=f"Đẳng hữu dụng ({sel_ip['name_vi']})",
+            showlegend=True,
+        ))
+
+    # ── Layout ──
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text="<b>Đường Cong Hiệu Quả Markowitz</b>  "
+                 "<span style='font-size:12px;color:#8896AB;'>"
+                 "U = E[r] − (A/2)·σ²</span>",
+            font=dict(size=14, color="#F0F4FF"),
+            x=0.01,
+        ),
+        height=520,
+        legend=dict(
+            orientation="v",
+            x=1.08,
+            y=0.95,
+            font=dict(size=10),
+            bgcolor="rgba(26,29,39,0.85)",
+            bordercolor="rgba(255,255,255,0.08)",
+            borderwidth=1,
+        ),
+        xaxis=dict(ticksuffix="%"),
+        yaxis=dict(ticksuffix="%"),
+    )
+    _apply_axis_style(fig, "Rủi ro σ (%)", "Kỳ vọng lợi nhuận E[r] (%)")
+    return fig

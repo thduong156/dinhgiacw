@@ -226,6 +226,34 @@ def optimize_min_variance(assets: list[CWAsset], corr: np.ndarray,
     return best_weights
 
 
+def find_optimal_for_investor(frontier: dict, A: float) -> dict:
+    """
+    Tìm danh mục tối ưu từ frontier cho nhà đầu tư có hệ số ngại rủi ro A.
+
+    Hàm hữu dụng: U = E[r] - (A/2) * σ²
+    - A lớn (>4): ngại rủi ro cao → chọn danh mục gần Min-Variance
+    - A vừa (~3): cân bằng → gần Max-Sharpe
+    - A nhỏ (<2): ưa rủi ro → gần Max-Return
+
+    Returns dict: {weights, port_return, port_vol, utility, sharpe}
+    """
+    returns  = frontier["returns"]
+    vols     = frontier["volatilities"]
+    sharpes  = frontier["sharpes"]
+    weights  = frontier["weights"]
+
+    utilities = returns - (A / 2) * vols ** 2
+    idx = int(np.argmax(utilities))
+
+    return {
+        "weights":     weights[idx],
+        "port_return": float(returns[idx]),
+        "port_vol":    float(vols[idx]),
+        "utility":     float(utilities[idx]),
+        "sharpe":      float(sharpes[idx]),
+    }
+
+
 def generate_efficient_frontier(assets: list[CWAsset], corr: np.ndarray,
                                 n_portfolios: int = 5000) -> dict:
     """
