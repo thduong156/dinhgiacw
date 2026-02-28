@@ -22,7 +22,7 @@ from data.portfolio_manager import load_portfolio, deserialize_cw_entry
 
 
 def _make_bullish_icon():
-    """Tạo favicon bullish xanh lá: 3 nến tăng dần + đường xu hướng xanh."""
+    """Favicon: hình con bò bullish xanh lá (pixel art 64×64)."""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -32,31 +32,51 @@ def _make_bullish_icon():
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Màu xanh bullish (#2ECC71 palette)
-    C_BODY   = (46,  204, 113, 255)   # #2ECC71 — thân nến xanh
-    C_WICK   = (39,  174,  96, 230)   # #27AE60 — bấc nến xanh đậm hơn
-    C_TREND  = (88,  214, 141, 210)   # #58D68D — đường xu hướng xanh nhạt
-    C_GLOW   = (46,  204, 113,  45)   # hào quang nhẹ xung quanh thân
+    G  = (46, 204, 113, 255)    # #2ECC71 — xanh chính
+    GD = (30, 150,  80, 255)    # xanh đậm — sừng, mõm, móng, đuôi
+    BK = ( 8,  12,  10, 255)    # đen — mắt / lỗ mũi
+    HL = (150, 230, 170, 200)   # highlight mắt
 
-    # 3 nến bullish tăng dần: (x_tâm, y_bấc_trên, y_thân_trên, y_thân_dưới, y_bấc_dưới)
-    candles = [
-        (12, 38, 42, 56, 60),   # nến trái  — thấp nhất
-        (32, 20, 24, 40, 44),   # nến giữa
-        (52,  3,  7, 22, 26),   # nến phải  — cao nhất
-    ]
-    half = 7
+    # ── Thân (body) ──────────────────────────────────────────────
+    d.ellipse([13, 24, 55, 45], fill=G)
 
-    for x, wt, bt, bb, wb in candles:
-        # Hào quang mờ (glow) xung quanh thân
-        d.rectangle([x - half - 2, bt - 1, x + half + 2, bb + 1], fill=C_GLOW)
-        # Bấc trên & dưới
-        d.line([(x, wt), (x, bt)], fill=C_WICK, width=2)
-        d.line([(x, bb), (x, wb)], fill=C_WICK, width=2)
-        # Thân nến xanh
-        d.rectangle([x - half, bt, x + half, bb], fill=C_BODY)
+    # ── Bướu vai (hump) ─────────────────────────────────────────
+    d.ellipse([17, 17, 32, 32], fill=G)
 
-    # Đường xu hướng tăng: dưới-trái → trên-phải (nét đôi để rõ hơn)
-    d.line([(3, 57), (61, 11)], fill=C_TREND, width=2)
+    # ── Cổ — lấp khoảng trống giữa đầu và thân ─────────────────
+    d.rectangle([12, 26, 22, 44], fill=G)
+
+    # ── Đầu (vẽ sau cổ để phủ lên, không có kẽ hở) ──────────────
+    d.ellipse([1, 17, 22, 37], fill=G)
+
+    # ── Sừng (horns) ─────────────────────────────────────────────
+    d.polygon([(4,  18), (9,  18), (6,  4)], fill=GD)   # sừng trái
+    d.polygon([(13, 17), (18, 17), (21, 4)], fill=GD)   # sừng phải
+
+    # ── Mõm (muzzle) ─────────────────────────────────────────────
+    d.ellipse([1, 29, 11, 37], fill=GD)
+    # Lỗ mũi
+    d.ellipse([2,  32, 5,  35], fill=BK)
+    d.ellipse([7,  32, 10, 35], fill=BK)
+
+    # ── Mắt ──────────────────────────────────────────────────────
+    d.ellipse([6, 19, 13, 26], fill=BK)
+    d.ellipse([7, 20, 10, 23], fill=HL)     # điểm sáng
+
+    # ── Chân trước ───────────────────────────────────────────────
+    d.rectangle([16, 44, 21, 61], fill=G)
+    d.rectangle([24, 44, 29, 61], fill=G)
+    d.rectangle([16, 60, 21, 63], fill=GD)  # móng
+    d.rectangle([24, 60, 29, 63], fill=GD)
+
+    # ── Chân sau ─────────────────────────────────────────────────
+    d.rectangle([39, 44, 44, 61], fill=G)
+    d.rectangle([47, 44, 52, 61], fill=G)
+    d.rectangle([39, 60, 44, 63], fill=GD)
+    d.rectangle([47, 60, 52, 63], fill=GD)
+
+    # ── Đuôi (cuộn lên trên) ─────────────────────────────────────
+    d.line([(54, 32), (59, 22), (62, 13)], fill=GD, width=3)
 
     return img
 
