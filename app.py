@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
-from ui.styles import inject_custom_css
+from ui.styles import inject_custom_css, inject_tab_navigation
 from ui.components import render_header, parameter_sidebar
 from ui.tab_recommend import render_recommend_tab
 from ui.tab_batch import render_batch_tab
@@ -20,16 +20,54 @@ from ui.tab_monte_carlo import render_monte_carlo_tab
 from ui.tab_hedging import render_hedging_tab
 from data.portfolio_manager import load_portfolio, deserialize_cw_entry
 
+
+def _make_bullish_icon():
+    """Tạo favicon bullish đơn sắc: 3 nến tăng dần trên nền trong suốt."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return "📈"
+
+    SIZE = 64
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Màu đơn sắc xám-trắng
+    C   = (220, 220, 220, 255)   # thân nến
+    CW  = (170, 170, 170, 220)   # bấc nến
+    CA  = (160, 160, 160, 180)   # đường xu hướng
+
+    # 3 nến bullish tăng dần: (x_tâm, y_bấc_trên, y_thân_trên, y_thân_dưới, y_bấc_dưới)
+    candles = [
+        (12, 38, 42, 56, 60),   # nến trái  — thấp nhất
+        (32, 20, 24, 40, 44),   # nến giữa
+        (52,  3,  7, 22, 26),   # nến phải  — cao nhất
+    ]
+    for x, wt, bt, bb, wb in candles:
+        half = 7
+        d.line([(x, wt), (x, bt)],  fill=CW, width=2)          # bấc trên
+        d.rectangle([x - half, bt, x + half, bb], fill=C)       # thân
+        d.line([(x, bb), (x, wb)],  fill=CW, width=2)           # bấc dưới
+
+    # Đường xu hướng tăng: dưới-trái → trên-phải
+    d.line([(4, 56), (60, 12)], fill=CA, width=1)
+
+    return img
+
+
 # Page config
 st.set_page_config(
     page_title="Phân Tích Chứng Quyền - Black-Scholes",
-    page_icon="◈",
+    page_icon=_make_bullish_icon(),
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # Inject CSS
 inject_custom_css()
+
+# Inject tab navigation arrows
+inject_tab_navigation()
 
 # Header
 render_header()
@@ -48,7 +86,7 @@ if "cw_portfolio" not in st.session_state:
 # Sidebar — returns selected CW or None
 selected_cw = parameter_sidebar()
 
-# Tabs — workflow order: Định giá → Phân tích loạt → So sánh → Greeks → Đề xuất → Dự báo → IV → Kịch bản → Theo dõi
+# Tabs
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "◈ Định Giá CW",
     "≡ Phân Tích Hàng Loạt",
@@ -58,7 +96,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "◇ Dự Báo & Đòn Bẩy",
     "σ Biến Động Ngầm Định",
     "⊕ Kịch Bản & Stress Test",
-    "⊡ Theo Dõi Hàng Ngày",
+    "⊡ Theo Dõi & Backtest",
     "∿ Monte Carlo",
     "⊘ Phòng Hộ",
 ])

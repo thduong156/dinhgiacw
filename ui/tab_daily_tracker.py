@@ -1,4 +1,4 @@
-"""Tab 9: Theo Dõi Dữ Liệu Hàng Ngày — Daily Data Tracker."""
+"""Tab: Theo Dõi & Backtest — Daily Data Tracker + Backtest giá lý thuyết vs thị trường."""
 
 import streamlit as st
 import pandas as pd
@@ -7,11 +7,12 @@ from datetime import date, datetime
 from ui.components import (
     format_vnd, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import (
     create_daily_price_chart, create_daily_pd_chart,
     create_daily_greeks_chart, create_backtesting_chart,
+    create_backtest_price_chart, create_backtest_pd_chart,
 )
 from data.daily_tracker import (
     save_daily_record, load_daily_history, get_all_tracked_cw,
@@ -233,7 +234,7 @@ def render_daily_tracker_tab():
 
         with col_s:
             input_S_str = st.text_input(
-                "◆ Giá Cổ Sở (S)",
+                "◆ Giá Cơ Sở (S)",
                 value=_fmt_number(defaults["S"]),
                 help="Giá cổ phiếu cơ sở — VD: 100,000",
             )
@@ -435,7 +436,7 @@ def render_daily_tracker_tab():
 
     display_df = pd.DataFrame(display_rows)
     table_container("Lịch Sử Dữ Liệu", badge=f"{len(records)} ngày")
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    render_table(display_df)
     table_container_end()
 
     # ===== EXPORT & MANAGE =====
@@ -568,3 +569,130 @@ def render_daily_tracker_tab():
 
             except Exception as e:
                 st.error(f"Lỗi đọc file CSV: {e}")
+
+    # ============================================================
+    # BACKTEST SECTION
+    # ============================================================
+    _render_backtest_section()
+
+
+def _render_backtest_section():
+    """Phần Backtest: so sánh Giá Lý Thuyết vs Giá Thị Trường theo lịch sử."""
+    import numpy as np
+    import pandas as pd
+    from data.daily_tracker import get_all_tracked_cw, get_history_dataframe
+
+    st.markdown("---")
+    section_title("⊞", "Backtest — Giá Lý Thuyết vs Thị Trường")
+
+    all_tracked = get_all_tracked_cw()
+    if not all_tracked:
+        tab_empty_state(
+            "⊞",
+            "Chưa có dữ liệu để Backtest",
+            "Nhập ít nhất 2 ngày dữ liệu ở phần Theo Dõi bên trên để bật Backtest.",
+            "Nhập dữ liệu → Lưu → Quay lại đây",
+        )
+        return
+
+    # CW selector
+    col_sel, _ = st.columns([2, 3])
+    with col_sel:
+        selected_bt = st.selectbox(
+            "Chọn CW để Backtest",
+            all_tracked,
+            key="backtest_cw_selector",
+        )
+
+    df_full = get_history_dataframe(selected_bt)
+    if df_full is None or len(df_full) < 2:
+        st.warning(
+            f"CW **{selected_bt}** chỉ có "
+            f"{'0' if df_full is None else len(df_full)} ngày dữ liệu. "
+            "Cần ít nhất 2 ngày."
+        )
+        return
+
+    required = {"date", "cw_price", "theoretical_price"}
+    if not required.issubset(df_full.columns):
+        st.error("Dữ liệu thiếu cột bắt buộc. Hãy đảm bảo các bản ghi đã được tính toán đầy đủ.")
+        return
+
+    # Date range filter
+    section_divider()
+    min_date = df_full["date"].min().date()
+    max_date = df_full["date"].max().date()
+    c1, c2, _ = st.columns([1, 1, 2])
+    with c1:
+        start_date = st.date_input("Từ ngày", value=min_date,
+                                   min_value=min_date, max_value=max_date,
+                                   key="bt_start_date")
+    with c2:
+        end_date = st.date_input("Đến ngày", value=max_date,
+                                 min_value=min_date, max_value=max_date,
+                                 key="bt_end_date")
+
+    df = df_full[
+        (df_full["date"].dt.date >= start_date) &
+        (df_full["date"].dt.date <= end_date)
+    ].copy()
+
+    if len(df) < 2:
+        st.warning("Khoảng ngày có ít hơn 2 records. Hãy mở rộng khoảng thời gian.")
+        return
+
+    # Metrics
+    mae = float(np.mean(np.abs(df["theoretical_price"] - df["cw_price"])))
+    corr = float(df["theoretical_price"].corr(df["cw_price"]))
+    avg_pd = float(df["premium_discount_pct"].mean()) if "premium_discount_pct" in df.columns else 0.0
+
+    section_divider()
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        colored_metric("Số Ngày Dữ Liệu", f"{len(df)} ngày", "#B8C2DB")
+    with m2:
+        colored_metric("MAE (Sai Số TB)", f"{mae:,.2f} đ", "#FFE66D")
+    with m3:
+        sign = "+" if avg_pd >= 0 else ""
+        colored_metric("P/D % Trung Bình", f"{sign}{avg_pd:.2f}%",
+                       "#2ECC71" if avg_pd >= 0 else "#E74C3C")
+    with m4:
+        colored_metric("Tương Quan (ρ)", f"{corr:.4f}",
+                       "#2ECC71" if corr >= 0.85 else ("#FFE66D" if corr >= 0.6 else "#E74C3C"))
+
+    section_divider()
+
+    # Chart chính
+    chart_container("So Sánh Giá: Thị Trường vs Lý Thuyết Black-Scholes")
+    st.plotly_chart(create_backtest_price_chart(df, selected_bt), use_container_width=True)
+    chart_container_end()
+
+    # Chart P/D %
+    if "premium_discount_pct" in df.columns:
+        chart_container("Premium / Discount % Theo Ngày")
+        fig_pd = create_backtest_pd_chart(df, selected_bt)
+        if fig_pd is not None:
+            st.plotly_chart(fig_pd, use_container_width=True)
+        chart_container_end()
+
+    # Bảng chi tiết
+    section_divider()
+    with st.expander("Xem Dữ Liệu Chi Tiết"):
+        display_cols = {
+            "Ngày": df["date"].dt.strftime("%d/%m/%Y"),
+            "Giá CS (S)": df["S"].map(lambda x: f"{x:,.0f} đ") if "S" in df.columns else "N/A",
+            "Giá TT (đ)": df["cw_price"].map(lambda x: f"{x:,.2f}"),
+            "Giá LT (đ)": df["theoretical_price"].map(lambda x: f"{x:,.2f}"),
+            "Sai Lệch (đ)": (df["cw_price"] - df["theoretical_price"]).map(lambda x: f"{x:+,.2f}"),
+        }
+        if "premium_discount_pct" in df.columns:
+            display_cols["P/D %"] = df["premium_discount_pct"].map(lambda x: f"{x:+.2f}%")
+        if "delta" in df.columns:
+            display_cols["Delta"] = df["delta"].map(
+                lambda x: f"{x:.4f}" if pd.notna(x) else "N/A")
+        if "sigma" in df.columns:
+            display_cols["Sigma (σ)"] = df["sigma"].map(
+                lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A")
+        table_container("Dữ Liệu Lịch Sử", badge=f"{len(df)} ngày")
+        render_table(pd.DataFrame(display_cols))
+        table_container_end()

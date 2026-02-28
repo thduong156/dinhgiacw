@@ -6,7 +6,7 @@ from core.implied_volatility import solve_implied_volatility
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import create_payoff_diagram
 
@@ -309,7 +309,7 @@ def render_pricing_tab(cw):
             f'{qty:,} CW × {format_vnd(entry_p)} đ = '
             f'{format_vnd(cost_total)} đ &rarr; '
             f'Giá trị hiện tại: <b>{format_vnd(market_val)} đ</b> | '
-            f'{pnl_label}: <b>{format_vnd(abs(pnl_vnd))} đ ({pnl_pct:+.1f}%)</b>'
+            f'{pnl_label}: <b>{format_vnd(abs(pnl_vnd))} đ ({pnl_pct:+,.1f}%)</b>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -445,7 +445,7 @@ def render_pricing_tab(cw):
     ]
 
     table_container("So Sánh Chi Tiết", badge="5 chỉ tiêu")
-    st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+    render_table(comparison_data)
     table_container_end()
 
     # Bảng tham số tổng hợp

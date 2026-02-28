@@ -6,11 +6,11 @@ def inject_custom_css():
     st.markdown("""
     <style>
         /* ===== GOOGLE FONTS ===== */
-        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+Symbols+2&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols+2&display=swap');
 
-        /* ===== GLOBAL FONT OVERRIDE — Fira Code everywhere ===== */
+        /* ===== GLOBAL FONT OVERRIDE — Times New Roman everywhere ===== */
         *, *::before, *::after {
-            font-family: 'Fira Code', 'Noto Sans Symbols 2', monospace !important;
+            font-family: 'Times New Roman', Times, 'Noto Sans Symbols 2', serif !important;
             font-feature-settings: "liga" 0, "calt" 0 !important;
             -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
         }
@@ -25,8 +25,8 @@ def inject_custom_css():
         }
         /* Preserve Noto Sans Symbols 2 for icon containers */
         .section-title-icon, .sb-brand-icon, .sb-empty-state-icon,
-        .tab-empty-state-icon, .medal-card-icon {
-            font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', 'Fira Code', monospace !important;
+        .tab-empty-state-icon {
+            font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', 'Times New Roman', Times, serif !important;
         }
 
         /*
@@ -45,7 +45,7 @@ def inject_custom_css():
 
         /* ===== GLOBAL ===== */
         html, body, [class*="css"] {
-            font-family: 'Fira Code', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', monospace;
+            font-family: 'Times New Roman', Times, serif;
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -69,7 +69,7 @@ def inject_custom_css():
         .main-header {
             font-size: 2rem;
             font-weight: 700;
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             color: #F0F4FF;
             text-align: center;
             padding: 0.4rem 0 0.3rem 0;
@@ -125,7 +125,7 @@ def inject_custom_css():
         .sb-brand-title {
             font-size: 1.15rem;
             font-weight: 700;
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             color: #F0F4FF;
             letter-spacing: 1.5px;
             text-transform: uppercase;
@@ -220,7 +220,7 @@ def inject_custom_css():
             font-size: 0.95rem;
             font-weight: 700;
             color: #F0F4FF;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
         }
         .sb-dash-type-badge {
             display: inline-flex;
@@ -302,7 +302,7 @@ def inject_custom_css():
             font-size: 0.88rem;
             font-weight: 700;
             color: #F0F4FF;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
         }
 
         /* Time remaining progress bar */
@@ -323,7 +323,7 @@ def inject_custom_css():
         .sb-time-bar-value {
             font-size: 0.72rem;
             font-weight: 700;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             color: #B8C2DB;
         }
         .sb-time-bar {
@@ -363,7 +363,7 @@ def inject_custom_css():
         }
         .sb-portfolio-count-badge .count-num {
             font-weight: 800;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.78rem;
             color: #F0F4FF;
         }
@@ -407,7 +407,7 @@ def inject_custom_css():
             font-weight: 700;
             font-size: 0.82rem;
             color: #F0F4FF;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             padding-left: 6px;
         }
         .sb-cw-card-badge {
@@ -439,12 +439,12 @@ def inject_custom_css():
             padding: 2px 6px;
             background: #222633;
             border-radius: 4px;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
         }
         .sb-cw-card-pnl {
             font-size: 0.65rem;
             font-weight: 700;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             padding: 3px 6px;
             margin-top: 4px;
         }
@@ -457,6 +457,24 @@ def inject_custom_css():
             color: #B8C2DB; margin-bottom: 4px;
         }
         .sb-empty-state-text { font-size: 0.72rem; color: #7A84A0; line-height: 1.5; }
+
+        /* ===== NEW PORTFOLIO FORM ===== */
+        .sb-new-portfolio-form {
+            background: #1A1D27;
+            border: 1px solid #2E3348;
+            border-left: 3px solid #444C66;
+            border-radius: 10px;
+            padding: 12px 12px 4px;
+            margin: 6px 0 10px;
+        }
+        .sb-new-portfolio-title {
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #B8C2DB;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
 
         /* ===== METRIC CARDS ===== */
         div[data-testid="stMetric"] {
@@ -483,48 +501,80 @@ def inject_custom_css():
             color: #F0F4FF !important;
             font-size: 1.25rem !important;
             font-weight: 700 !important;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace !important;
+            font-family: 'Times New Roman', Times, serif !important;
         }
         div[data-testid="stMetric"] [data-testid="stMetricDelta"] svg { display: inline; }
 
         /* ===== TABS ===== */
-        /* Container bọc ngoài — relative để chứa mũi tên */
+
+        /* Xoá gradient fade overlay (StyledTabContainer::after) do Streamlit render khi tab overflow */
+        .eh1nhsq0::after {
+            display: none !important;
+        }
+
         .stTabs [data-baseweb="tab-list"] {
-            gap: 3px;
             background: #1A1D27;
-            border-radius: 14px;
-            padding: 5px 36px;
-            border: 1px solid #2E3348;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            scrollbar-width: none;          /* Firefox */
-            -ms-overflow-style: none;       /* IE/Edge */
-            position: relative;
+            border-radius: 12px;
+            border: 1.5px solid #2E3348;
+            padding: 4px 6px;
+            gap: 3px;
+            overflow-x: auto !important;
+            overflow-y: visible;
+            scrollbar-width: thin;
+            scrollbar-color: #444C66 #1A1D27;
+            /* Xoá hiệu ứng fade/mask ở cuối thanh tab */
+            -webkit-mask-image: none !important;
+            mask-image: none !important;
+        }
+
+        /* Xoá tất cả pseudo-element fade do Streamlit/BaseWeb tự thêm */
+        .stTabs [data-baseweb="tab-list"]::after,
+        .stTabs [data-baseweb="tab-list"]::before,
+        .stTabs [data-baseweb="tab-list"] > div::after,
+        .stTabs [data-baseweb="tab-list"] > div::before {
+            display: none !important;
+            background: none !important;
+            content: none !important;
         }
         .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
-            display: none;                  /* Chrome/Safari */
+            height: 4px;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-track {
+            background: #1A1D27;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+            background: #444C66;
+            border-radius: 4px;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb:hover {
+            background: #B8C2DB;
+        }
+
+        [data-baseweb="tab-highlight"],
+        [data-baseweb="tab-border"] {
+            display: none !important;
         }
 
         .stTabs [data-baseweb="tab"] {
-            border-radius: 11px;
-            padding: 10px 16px;
+            border-radius: 8px;
+            padding: 7px 14px;
             font-weight: 500;
-            font-family: 'Fira Code', 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Apple Symbols', monospace;
+            font-family: 'Times New Roman', 'Noto Sans Symbols 2', Times, serif;
             font-size: 0.82rem;
             color: #7A84A0;
-            transition: all 0.2s ease;
+            transition: all 0.18s ease;
             white-space: nowrap;
             flex-shrink: 0;
         }
         .stTabs [data-baseweb="tab"]:hover {
             background-color: #222633;
-            color: #B8C2DB;
+            color: #C8CFDF;
         }
         .stTabs [data-baseweb="tab"][aria-selected="true"] {
             background: #FFFFFF !important;
             color: #0E1117 !important;
             font-weight: 700 !important;
-            font-family: 'Fira Code', monospace !important;
+            font-family: 'Times New Roman', Times, serif !important;
             box-shadow: 0 2px 10px rgba(255,255,255,0.15);
         }
 
@@ -596,7 +646,7 @@ def inject_custom_css():
         .section-title-text {
             font-size: 1.15rem;
             font-weight: 600;
-            font-family: 'Fira Code', 'Noto Sans Symbols 2', monospace;
+            font-family: 'Times New Roman', Times, serif;
             color: #F0F4FF;
             letter-spacing: 0.3px;
         }
@@ -650,7 +700,7 @@ def inject_custom_css():
         .custom-metric-value {
             font-size: 1.25rem;
             font-weight: 700;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
         }
         /* Card variant dùng cho Monte Carlo metrics */
         .custom-metric-card {
@@ -738,7 +788,7 @@ def inject_custom_css():
             font-size: 0.75rem;
             color: #7A84A0;
             margin-top: 4px;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
         }
 
         /* ===== QUICK SUMMARY ===== */
@@ -758,7 +808,7 @@ def inject_custom_css():
         .signal-score {
             font-size: 3.2rem;
             font-weight: 800;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             line-height: 1;
             margin-bottom: 6px;
             color: #F0F4FF;
@@ -827,7 +877,7 @@ def inject_custom_css():
         .score-card-value {
             font-size: 1.3rem;
             font-weight: 700;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             color: #F0F4FF;
         }
         .score-card-bar {
@@ -858,7 +908,7 @@ def inject_custom_css():
         .best-card-score {
             font-size: 3.2rem;
             font-weight: 800;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             line-height: 1;
             color: #F0F4FF;
         }
@@ -895,12 +945,16 @@ def inject_custom_css():
             transition: transform 0.2s ease, border-color 0.2s ease;
         }
         .medal-card:hover { transform: translateY(-3px); border-color: #444C66; }
-        .medal-card-icon { font-size: 2.2rem; }
+        .medal-card-icon {
+            font-size: 2.2rem;
+            font-family: 'Times New Roman', Times, serif !important;
+            font-weight: 700;
+        }
         .medal-card-name { font-size: 1.25rem; font-weight: 700; margin: 4px 0; color: #F0F4FF; }
         .medal-card-score {
             font-size: 2rem;
             font-weight: 800;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             margin: 8px 0;
             color: #F0F4FF;
         }
@@ -1058,7 +1112,7 @@ def inject_custom_css():
             background: #222633;
             padding: 3px 10px;
             border-radius: 8px;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             border: 1px solid #2E3348;
         }
 
@@ -1206,7 +1260,7 @@ def inject_custom_css():
         .batch-stat-card-value {
             font-size: 1.8rem;
             font-weight: 800;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             line-height: 1;
             margin-bottom: 4px;
             color: #F0F4FF;
@@ -1290,7 +1344,7 @@ def inject_custom_css():
         .daily-stat-card-value {
             font-size: 1.3rem;
             font-weight: 800;
-            font-family: 'Fira Code', 'JetBrains Mono', monospace;
+            font-family: 'Times New Roman', Times, serif;
             line-height: 1.2;
             margin-bottom: 6px;
             color: #F0F4FF;
@@ -1332,11 +1386,11 @@ def inject_custom_css():
         .rp-icon {
             font-size: 1.6rem;
             margin-bottom: 4px;
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-weight: 700;
         }
         .rp-name {
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.82rem;
             font-weight: 600;
             color: #F0F4FF;
@@ -1349,7 +1403,7 @@ def inject_custom_css():
             margin-bottom: 6px;
         }
         .rp-target {
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.68rem;
             color: #B8C2DB;
             padding: 3px 6px;
@@ -1372,7 +1426,7 @@ def inject_custom_css():
             padding: 12px;
         }
         .stock-pos-ticker {
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-weight: 700;
             font-size: 1rem;
             color: #F0F4FF;
@@ -1383,7 +1437,7 @@ def inject_custom_css():
             margin-top: 4px;
         }
         .stock-pos-pnl {
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.85rem;
             font-weight: 600;
             margin-top: 6px;
@@ -1398,7 +1452,7 @@ def inject_custom_css():
             margin: 8px 0;
         }
         .strategy-card-title {
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.95rem;
             font-weight: 600;
             color: #F0F4FF;
@@ -1426,7 +1480,7 @@ def inject_custom_css():
             transition: width 0.3s ease;
         }
         .delta-gauge-label {
-            font-family: 'Fira Code', monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.78rem;
             color: #B8C2DB;
             white-space: nowrap;
@@ -1453,55 +1507,159 @@ def inject_custom_css():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Tab scroll arrows ──
-    st.markdown("""
-    <script>
-    (function() {
-        function injectArrows() {
-            const tabList = document.querySelector('[data-baseweb="tab-list"]');
-            if (!tabList || tabList.dataset.arrowsInjected) return;
-            tabList.dataset.arrowsInjected = '1';
 
-            const wrapper = tabList.parentElement;
-            wrapper.style.position = 'relative';
+def inject_tab_navigation():
+    """Inject JS để thêm nút mũi tên ‹ › điều hướng giữa các tab."""
+    import streamlit.components.v1 as components
+    components.html("""
+<script>
+(function(){
+    /* Chỉ thiết lập observer một lần cho toàn session */
+    if (window.parent._cwNavSetup) { return; }
+    window.parent._cwNavSetup = true;
 
-            const arrowStyle = `
-                position: absolute; top: 50%; transform: translateY(-50%);
-                width: 28px; height: 28px; border-radius: 50%;
-                background: #1A1D27; border: 1px solid #444C66;
-                color: #B8C2DB; font-size: 14px; cursor: pointer;
-                display: flex; align-items: center; justify-content: center;
-                z-index: 10; transition: all 0.2s ease;
-                font-family: 'Noto Sans Symbols 2', sans-serif;
-            `;
+    var BTN = [
+        'width:32px', 'height:32px', 'min-width:32px',
+        'border-radius:50%',
+        'border:1.5px solid #2E3348',
+        'background:#1A1D27',
+        'color:#B8C2DB',
+        'font-size:1.3rem',
+        'font-family:"Times New Roman",Times,serif',
+        'line-height:1',
+        'cursor:pointer',
+        'display:inline-flex',
+        'align-items:center',
+        'justify-content:center',
+        'flex-shrink:0',
+        'padding:0 0 2px 0',
+        'transition:background 0.18s,border-color 0.18s,color 0.18s',
+        'outline:none',
+        'box-sizing:border-box',
+        'z-index:10'
+    ].join(';');
 
-            const leftBtn = document.createElement('button');
-            leftBtn.innerHTML = '‹';
-            leftBtn.style.cssText = arrowStyle + 'left: 4px;';
-            leftBtn.onmouseover = () => { leftBtn.style.background = '#2E3348'; leftBtn.style.color = '#F0F4FF'; };
-            leftBtn.onmouseout  = () => { leftBtn.style.background = '#1A1D27'; leftBtn.style.color = '#B8C2DB'; };
-            leftBtn.onclick = () => tabList.scrollBy({ left: -200, behavior: 'smooth' });
+    function init() {
+        var doc = window.parent.document;
+        if (!doc) return;
+        if (doc.getElementById('_cw_tab_prev')) return;
 
-            const rightBtn = document.createElement('button');
-            rightBtn.innerHTML = '›';
-            rightBtn.style.cssText = arrowStyle + 'right: 4px;';
-            rightBtn.onmouseover = () => { rightBtn.style.background = '#2E3348'; rightBtn.style.color = '#F0F4FF'; };
-            rightBtn.onmouseout  = () => { rightBtn.style.background = '#1A1D27'; rightBtn.style.color = '#B8C2DB'; };
-            rightBtn.onclick = () => tabList.scrollBy({ left: 200, behavior: 'smooth' });
+        var tabList = doc.querySelector('[data-baseweb="tab-list"]');
+        if (!tabList || !tabList.parentNode) return;
 
-            wrapper.appendChild(leftBtn);
-            wrapper.appendChild(rightBtn);
+        /* Tạo wrapper bao quanh tabList + 2 nút */
+        var wrap = doc.createElement('div');
+        wrap.id = '_cw_tab_wrap';
+        wrap.style.cssText = 'display:flex;align-items:center;gap:6px;width:100%;';
+
+        var prev = doc.createElement('button');
+        prev.id = '_cw_tab_prev';
+        prev.innerHTML = '&#8249;';
+        prev.setAttribute('style', BTN);
+        prev.title = 'Tab trước (‹)';
+
+        var next = doc.createElement('button');
+        next.id = '_cw_tab_next';
+        next.innerHTML = '&#8250;';
+        next.setAttribute('style', BTN);
+        next.title = 'Tab tiếp (›)';
+
+        /* Chèn: parent > wrap > [prev, tabList, next] */
+        tabList.parentNode.insertBefore(wrap, tabList);
+        wrap.appendChild(prev);
+        wrap.appendChild(tabList);
+        wrap.appendChild(next);
+
+        /* Tab-list chiếm không gian còn lại */
+        tabList.style.flex = '1';
+        tabList.style.minWidth = '0';
+
+        /* Hiệu ứng hover */
+        function addHover(btn) {
+            btn.addEventListener('mouseenter', function() {
+                if (!btn.disabled) {
+                    btn.style.background = '#222633';
+                    btn.style.borderColor = '#444C66';
+                    btn.style.color = '#F0F4FF';
+                }
+            });
+            btn.addEventListener('mouseleave', function() {
+                if (!btn.disabled) {
+                    btn.style.background = '#1A1D27';
+                    btn.style.borderColor = '#2E3348';
+                    btn.style.color = '#B8C2DB';
+                }
+            });
+        }
+        addHover(prev);
+        addHover(next);
+
+        function getTabs() {
+            return Array.from(tabList.querySelectorAll('[data-baseweb="tab"]'));
+        }
+        function getActiveIdx() {
+            var t = getTabs();
+            var a = tabList.querySelector('[data-baseweb="tab"][aria-selected="true"]');
+            return t.indexOf(a);
+        }
+        function updateState() {
+            var t = getTabs();
+            var i = getActiveIdx();
+            var atFirst = (i <= 0);
+            var atLast  = (i >= t.length - 1);
+            prev.disabled = atFirst;
+            prev.style.opacity = atFirst ? '0.3' : '1';
+            prev.style.cursor  = atFirst ? 'default' : 'pointer';
+            next.disabled = atLast;
+            next.style.opacity = atLast ? '0.3' : '1';
+            next.style.cursor  = atLast ? 'default' : 'pointer';
         }
 
-        // Retry until Streamlit tabs render
-        let attempts = 0;
-        const interval = setInterval(() => {
-            injectArrows();
-            attempts++;
-            if (document.querySelector('[data-baseweb="tab-list"][data-arrows-injected]') || attempts > 30) {
-                clearInterval(interval);
-            }
-        }, 300);
-    })();
-    </script>
-    """, unsafe_allow_html=True)
+        prev.addEventListener('click', function() {
+            var t = getTabs(), i = getActiveIdx();
+            if (i > 0) t[i - 1].click();
+        });
+        next.addEventListener('click', function() {
+            var t = getTabs(), i = getActiveIdx();
+            if (i < t.length - 1) t[i + 1].click();
+        });
+
+        updateState();
+
+        /* Theo dõi thay đổi aria-selected để cập nhật trạng thái nút */
+        new MutationObserver(updateState).observe(tabList, {
+            attributes: true,
+            subtree: true,
+            attributeFilter: ['aria-selected']
+        });
+    }
+
+    /* Reinit khi Streamlit rerender xoá DOM */
+    var reinitTimer;
+    function schedule() {
+        clearTimeout(reinitTimer);
+        reinitTimer = setTimeout(function() {
+            var doc = window.parent.document;
+            if (doc && !doc.getElementById('_cw_tab_prev')) init();
+        }, 250);
+    }
+
+    try {
+        var doc = window.parent.document;
+        if (doc && doc.body) {
+            new MutationObserver(schedule).observe(doc.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+    } catch(e) {}
+
+    /* Thử ngay sau khi load */
+    setTimeout(init, 300);
+    setTimeout(init, 900);
+    setTimeout(init, 2500);
+})();
+</script>
+""", height=0)
+
+

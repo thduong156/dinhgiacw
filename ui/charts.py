@@ -903,7 +903,7 @@ def create_daily_price_chart(records):
     # Left Y: Spot price (green)
     fig.add_trace(go.Scatter(
         x=dates, y=S_vals,
-        name="Cổ Sở (S) ←",
+        name="Cơ Sở (S) ←",
         line=dict(color=COLORS["positive"], width=2),
         hovertemplate="S: %{y:,.0f} đ<extra></extra>",
     ), secondary_y=False)
@@ -937,7 +937,7 @@ def create_daily_price_chart(records):
         title_font=dict(size=11, color="#94A3B8"),
     )
     fig.update_yaxes(
-        title_text="Cổ Sở (đ)",
+        title_text="Cơ Sở (đ)",
         gridcolor=COLORS["grid"], zeroline=False,
         title_font=dict(size=11, color=COLORS["positive"]),
         secondary_y=False,
@@ -1212,7 +1212,7 @@ def create_pnl_heatmap(z_data, y_labels, x_labels, be_y=None, current_marker=Non
         hovertemplate=(
             "Giá CS: %{y}<br>"
             "Ngày còn lại: %{x}<br>"
-            "P&L: %{z:+,.0f} đ<extra></extra>"
+            "P&L: %{text} đ<extra></extra>"
         ),
         colorbar=dict(
             title=dict(text="P&L (đ)", font=dict(size=11, color="#8896AB")),
@@ -1343,7 +1343,7 @@ def create_vol_shock_heatmap(z_data, price_labels, iv_labels):
         hovertemplate=(
             "ΔGiá CS: %{y}<br>"
             "ΔIV: %{x}<br>"
-            "P&L: %{z:+,.0f} đ<extra></extra>"
+            "P&L: %{text} đ<extra></extra>"
         ),
         colorbar=dict(
             title=dict(text="P&L (đ)", font=dict(size=11, color="#8896AB")),
@@ -1411,6 +1411,7 @@ def create_mc_fan_chart(
         mode="lines",
         line=dict(color="#3B82F6", width=2.5),
         name="Trung vị (p50)",
+        hovertemplate="Trung vị: <b>%{y:+,.0f} đ</b><extra></extra>",
     ))
 
     # Đường baseline (time decay only — giá không đổi)
@@ -1420,6 +1421,7 @@ def create_mc_fan_chart(
         mode="lines",
         line=dict(color=COLORS["primary"], width=1.5, dash="dash"),
         name="Baseline (giá không đổi)",
+        hovertemplate="Baseline: <b>%{y:+,.0f} đ</b><extra></extra>",
     ))
 
     # Đường y=0
@@ -1433,7 +1435,7 @@ def create_mc_fan_chart(
         hovermode="x unified",
     )
     _apply_axis_style(fig, "Ngày giữ", "PnL (VNĐ)")
-    fig.update_yaxes(tickformat=",.0f")
+    fig.update_yaxes(tickformat=",.0f", hoverformat="+,.0f")
     return fig
 
 
@@ -1747,4 +1749,112 @@ def create_risk_profile_radar(profiles_data: list[dict]) -> go.Figure:
             font=dict(size=10),
         ),
     )
+    return fig
+
+
+# ===== BACKTEST CHARTS =====
+
+def create_backtest_price_chart(df, ma_cw: str):
+    """
+    Biểu đồ đường so sánh Giá Thị Trường vs Giá Lý Thuyết (Black-Scholes) theo thời gian.
+    Phần diện tích giữa 2 đường thể hiện mức độ sai lệch định giá.
+    """
+    import pandas as pd
+
+    fig = go.Figure()
+
+    # Trace 1: Giá thị trường (line đặc — chủ đạo)
+    fig.add_trace(go.Scatter(
+        x=df["date"],
+        y=df["cw_price"],
+        name="Giá Thị Trường",
+        mode="lines+markers",
+        line=dict(color=COLORS["primary"], width=2.5),
+        marker=dict(size=5, color=COLORS["primary"]),
+        hovertemplate=(
+            "<b>%{x|%d/%m/%Y}</b><br>"
+            "Giá TT: <b>%{y:,.2f} đ</b><extra>Thị Trường</extra>"
+        ),
+    ))
+
+    # Trace 2: Giá lý thuyết (dashed + fill tonexty)
+    fig.add_trace(go.Scatter(
+        x=df["date"],
+        y=df["theoretical_price"],
+        name="Giá Lý Thuyết (BS)",
+        mode="lines+markers",
+        line=dict(color=COLORS["secondary"], width=2, dash="dash"),
+        marker=dict(size=4, color=COLORS["secondary"], symbol="diamond"),
+        fill="tonexty",
+        fillcolor=_hex_to_rgba(COLORS["primary"], 0.07),
+        hovertemplate=(
+            "<b>%{x|%d/%m/%Y}</b><br>"
+            "Giá LT: <b>%{y:,.2f} đ</b><extra>Lý Thuyết BS</extra>"
+        ),
+    ))
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text=f"<b>So Sánh Giá CW: {ma_cw}</b>",
+            font=dict(size=15, color="#F0F4FF"),
+            x=0.01,
+        ),
+        legend=dict(
+            orientation="h", y=1.08, x=0, xanchor="left",
+            font=dict(size=11),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        hovermode="x unified",
+    )
+    _apply_axis_style(fig, "Ngày", "Giá CW (đ)")
+    return fig
+
+
+def create_backtest_pd_chart(df, ma_cw: str):
+    """
+    Biểu đồ Bar: Premium/Discount % theo từng ngày.
+    Cột xanh = Premium (giá TT > lý thuyết), cột đỏ = Discount.
+    """
+    pct_col = "premium_discount_pct"
+    if pct_col not in df.columns:
+        return None
+
+    values = df[pct_col].fillna(0).tolist()
+    bar_colors = [
+        COLORS["positive"] if v >= 0 else COLORS["negative"]
+        for v in values
+    ]
+
+    fig = go.Figure(go.Bar(
+        x=df["date"],
+        y=values,
+        marker_color=bar_colors,
+        marker_line_width=0,
+        name="P/D %",
+        hovertemplate=(
+            "<b>%{x|%d/%m/%Y}</b><br>"
+            "P/D: <b>%{y:+.2f}%</b><extra></extra>"
+        ),
+    ))
+
+    # Đường 0 tham chiếu
+    fig.add_hline(
+        y=0,
+        line_color=COLORS["neutral"],
+        line_dash="dot",
+        line_width=1.2,
+        opacity=0.6,
+    )
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text=f"<b>Premium / Discount % — {ma_cw}</b>",
+            font=dict(size=14, color="#F0F4FF"),
+            x=0.01,
+        ),
+        bargap=0.25,
+    )
+    _apply_axis_style(fig, "Ngày", "P/D %")
     return fig

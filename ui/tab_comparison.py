@@ -5,7 +5,7 @@ from core.greeks import GreeksCalculator
 from core.implied_volatility import solve_implied_volatility
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
-    tab_empty_state, section_divider, table_container, table_container_end,
+    tab_empty_state, section_divider, table_container, table_container_end, render_table,
 )
 
 
@@ -157,5 +157,5 @@ def render_comparison_tab(cw):
     ]
 
     table_container("So Sánh Chi Tiết", badge="5 chỉ tiêu")
-    st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+    render_table(comparison_data)
     table_container_end()

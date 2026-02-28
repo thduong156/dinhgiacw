@@ -14,7 +14,7 @@ from core.monte_carlo import simulate_portfolio
 from ui.components import (
     format_vnd, section_title, colored_metric,
     section_divider, chart_container, chart_container_end,
-    table_container, table_container_end,
+    table_container, table_container_end, render_table,
 )
 from ui.charts import (
     create_mc_fan_chart,
@@ -285,9 +285,9 @@ def _render_portfolio_table(result: dict, is_single: bool, sim_label: str):
             "PnL Hiện Tại": f"{'+'if current_pnl>=0 else ''}{current_pnl:,.0f}đ",
         })
 
-    df = pd.DataFrame(rows).set_index("Mã CW")
+    df = pd.DataFrame(rows)
     table_container()
-    st.dataframe(df, use_container_width=True)
+    render_table(df)
     table_container_end()
 
     n_paths = result["n_paths"]
@@ -413,9 +413,9 @@ def _render_per_cw_table(per_cw: list[dict]):
             "Xác Suất Lãi":   f"{c['prob_profit']*100:.1f}%",
         })
 
-    df = pd.DataFrame(rows).set_index("Mã CW")
+    df = pd.DataFrame(rows)
     table_container()
-    st.dataframe(df, use_container_width=True)
+    render_table(df)
     table_container_end()
 
 

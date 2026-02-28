@@ -232,13 +232,15 @@ def _render_position_pnl_html(cw: dict) -> str:
         f'margin-bottom:4px;">'
         f'<span style="font-size:0.65rem; color:#64748B; text-transform:uppercase; '
         f'letter-spacing:0.5px;">Vị thế {pnl_icon}</span>'
-        f'<span style="font-size:0.78rem; font-weight:800; color:{pnl_color}; '
-        f"font-family:'Fira Code',monospace;\">{pnl_sign}{format_vnd(pnl_vnd)}đ</span>"
+        f'<span style="font-size:0.78rem; font-weight:800; color:{pnl_color};">'
+        f'{pnl_sign}{format_vnd(pnl_vnd)} đ &nbsp;'
+        f'<span style="font-size:0.68rem; font-weight:600;">({pnl_sign}{pnl_pct:,.1f}%)</span>'
+        f'</span>'
         f'</div>'
         f'<div style="display:flex; justify-content:space-between; font-size:0.65rem; '
         f'color:#94A3B8;">'
-        f'<span>SL: {qty:,} · Giá vào: {format_vnd(entry_p)}</span>'
-        f'<span style="color:{pnl_color};">{pnl_sign}{pnl_pct:.1f}%</span>'
+        f'<span>SL: {qty:,} &middot; Vào: {format_vnd(entry_p)} đ</span>'
+        f'<span>{format_vnd(cost)} → {format_vnd(market_val)} đ</span>'
         f'</div>'
         f'</div>'
     )
@@ -399,7 +401,7 @@ def _render_cw_card(cw: dict, index: int):
         pnl_sign = "+" if pnl_vnd >= 0 else ""
         pnl_html = (
             f'<div class="sb-cw-card-pnl" style="color:{pnl_color};">'
-            f'{pnl_sign}{format_vnd(pnl_vnd)}đ ({pnl_sign}{pnl_pct:.1f}%) · {qty:,} CW'
+            f'{pnl_sign}{format_vnd(pnl_vnd)} đ ({pnl_sign}{pnl_pct:,.1f}%) · {qty:,} CW'
             f'</div>'
         )
 
@@ -432,8 +434,33 @@ def _render_cw_card(cw: dict, index: int):
         if st.button("× Xoá", key=f"remove_cw_{index}", use_container_width=True):
             portfolio = st.session_state["cw_portfolio"]
             if index < len(portfolio):
-                portfolio.pop(index)
-                st.session_state["cw_portfolio"] = portfolio
+                # Tạo list mới thay vì mutate in-place để Streamlit nhận đúng thay đổi
+                new_portfolio = [cw for i, cw in enumerate(portfolio) if i != index]
+                st.session_state["cw_portfolio"] = new_portfolio
+
+                # Dọn dẹp trạng thái edit và cache money của card bị xoá
+                _clear_money_cache(f"edit{index}")
+                st.session_state.pop(f"_editing_cw_{index}", None)
+
+                # Dịch trạng thái edit của các card phía sau lên 1 vị trí
+                old_len = len(portfolio)
+                for j in range(index + 1, old_len):
+                    old_edit_state = st.session_state.pop(f"_editing_cw_{j}", False)
+                    if old_edit_state:
+                        st.session_state[f"_editing_cw_{j - 1}"] = True
+                    # Dịch money cache
+                    for suffix in ["_S", "_K", "_cw_price", "_entry_price", "_quantity"]:
+                        old_val = st.session_state.pop(f"_money_edit{j}{suffix}", None)
+                        if old_val is not None:
+                            st.session_state[f"_money_edit{j - 1}{suffix}"] = old_val
+
+                # Điều chỉnh selected_cw_index cho đúng sau khi xoá
+                sel = st.session_state.get("selected_cw_index", 0)
+                if sel >= index and sel > 0:
+                    st.session_state["selected_cw_index"] = sel - 1
+                elif sel >= len(new_portfolio):
+                    st.session_state["selected_cw_index"] = max(0, len(new_portfolio) - 1)
+
                 _auto_save_portfolio()
                 st.rerun()
 
@@ -729,7 +756,7 @@ def _render_save_load_section():
 
     portfolios = list_portfolios()
 
-    # Tải
+    # ── Tải / Xoá file portfolio ──────────────────────────────
     if portfolios:
         selected = st.selectbox(
             "Chọn portfolio",
@@ -744,21 +771,38 @@ def _render_save_load_section():
                 data = load_portfolio(selected)
                 if data:
                     _apply_loaded_portfolio(data)
+                    st.session_state["_current_portfolio_filename"] = selected
+                    # Đóng form tạo mới nếu đang mở
+                    st.session_state.pop("_show_new_portfolio_form", None)
                     st.success(f"Đã tải: {data['portfolio_name']}")
                     st.rerun()
         with col_del:
             if st.button("× Xoá", use_container_width=True, key="btn_del_portfolio"):
+                # Nếu đang xoá file đang được load, reset current filename
+                if st.session_state.get("_current_portfolio_filename") == selected:
+                    st.session_state.pop("_current_portfolio_filename", None)
                 delete_portfolio(selected)
                 st.rerun()
     else:
         _render_empty_state(
             "▤",
             "Chưa có portfolio",
-            "Lưu portfolio để sử dụng lại sau.",
+            "Tạo hoặc lưu portfolio để sử dụng lại sau.",
         )
 
-    # Lưu
+    # ── Tạo portfolio mới (portfolio rỗng) ──────────────────────
     st.markdown("")
+    _is_new_form_open = st.session_state.get("_show_new_portfolio_form", False)
+    btn_new_label = "× Đóng" if _is_new_form_open else "▹ Tạo Portfolio Mới"
+    if st.button(btn_new_label, use_container_width=True, key="btn_toggle_new_portfolio"):
+        st.session_state["_show_new_portfolio_form"] = not _is_new_form_open
+        st.rerun()
+
+    if _is_new_form_open:
+        _render_new_portfolio_form(portfolios)
+
+    # ── Lưu portfolio hiện tại ────────────────────────────────
+    st.markdown('<div class="sb-divider" style="margin:10px 0 8px;"></div>', unsafe_allow_html=True)
     save_name = st.text_input(
         "Tên portfolio",
         value="My Portfolio",
@@ -766,21 +810,108 @@ def _render_save_load_section():
         label_visibility="collapsed",
         placeholder="Nhập tên portfolio...",
     )
-    if st.button("▪ Lưu Portfolio", use_container_width=True, key="btn_save_portfolio"):
+    if st.button("▪ Lưu Portfolio Hiện Tại", use_container_width=True, key="btn_save_portfolio"):
         portfolio = st.session_state.get("cw_portfolio", [])
-        if portfolio:
-            save_portfolio(save_name, portfolio)
-            st.success(f"Đã lưu: {save_name}")
+        if not save_name.strip():
+            st.warning("Vui lòng nhập tên portfolio.")
+        else:
+            save_portfolio(save_name.strip(), portfolio)
+            safe = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in save_name.strip())
+            st.session_state["_current_portfolio_filename"] = safe or "portfolio"
+            st.success(f"Đã lưu: {save_name.strip()}")
             st.rerun()
 
 
+def _render_new_portfolio_form(existing_portfolios: list):
+    """Form tạo portfolio mới (rỗng) trong sidebar."""
+    from data.portfolio_manager import save_portfolio
+
+    st.markdown(
+        '<div class="sb-new-portfolio-form">'
+        '<div class="sb-new-portfolio-title">▹ Tạo Portfolio Mới</div>',
+        unsafe_allow_html=True,
+    )
+
+    new_name = st.text_input(
+        "Tên portfolio mới",
+        value="",
+        key="new_portfolio_name_input",
+        placeholder="VD: MWG Tháng 3, Danh mục thử...",
+        label_visibility="collapsed",
+    )
+
+    # Kiểm tra trùng tên
+    safe_preview = "".join(
+        c if c.isalnum() or c in ("-", "_") else "_"
+        for c in (new_name.strip() or "")
+    )
+    will_overwrite = safe_preview and safe_preview in existing_portfolios
+    if will_overwrite:
+        st.warning(f"⚠ Portfolio **{safe_preview}** đã tồn tại — sẽ bị ghi đè.")
+
+    col_create, col_cancel = st.columns(2)
+    with col_create:
+        if st.button("▸ Tạo", key="btn_create_new_portfolio", use_container_width=True):
+            name_stripped = new_name.strip()
+            if not name_stripped:
+                st.error("Tên portfolio không được để trống.")
+            else:
+                safe_name = "".join(
+                    c if c.isalnum() or c in ("-", "_") else "_"
+                    for c in name_stripped
+                ) or "portfolio"
+
+                # Lưu file portfolio rỗng
+                save_portfolio(name_stripped, [], filename=safe_name)
+
+                # Cập nhật session: xoá toàn bộ CW hiện tại
+                st.session_state["cw_portfolio"] = []
+                st.session_state["_current_portfolio_filename"] = safe_name
+
+                # Cập nhật default để không reload cũ
+                save_portfolio("Default", [], filename="default")
+
+                # Dọn dẹp trạng thái liên quan đến portfolio cũ
+                keys_to_remove = [
+                    k for k in st.session_state
+                    if k.startswith("_editing_cw_") or k.startswith("_money_")
+                    or k in ("selected_cw_index", "_show_add_form")
+                ]
+                for k in keys_to_remove:
+                    st.session_state.pop(k, None)
+
+                # Đóng form
+                st.session_state["_show_new_portfolio_form"] = False
+
+                st.success(f"✓ Đã tạo portfolio: **{name_stripped}**")
+                st.rerun()
+
+    with col_cancel:
+        if st.button("× Huỷ", key="btn_cancel_new_portfolio", use_container_width=True):
+            st.session_state["_show_new_portfolio_form"] = False
+            st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def _auto_save_portfolio():
-    """Auto-save portfolio vào default.json (khi add/remove/CSV)."""
+    """Auto-save portfolio sau mỗi thao tác add/remove/CSV.
+
+    - Luôn lưu vào default.json (để auto-load khi khởi động lại).
+    - Nếu đang load một named portfolio, cũng lưu vào file đó
+      để xoá/thêm CW được persist đúng vào portfolio gốc.
+    """
     from data.portfolio_manager import save_portfolio
 
     portfolio = st.session_state.get("cw_portfolio", [])
-    if portfolio:
-        save_portfolio("Default", portfolio, filename="default")
+
+    # Luôn lưu vào default (kể cả khi rỗng để persist việc xoá hết)
+    save_portfolio("Default", portfolio, filename="default")
+
+    # Nếu có named portfolio đang được load, lưu vào file đó luôn
+    current_filename = st.session_state.get("_current_portfolio_filename")
+    if current_filename and current_filename != "default":
+        save_portfolio(current_filename, portfolio, filename=current_filename)
 
 
 def _apply_loaded_portfolio(data: dict):
@@ -892,6 +1023,83 @@ def table_container(title: str = "", badge: str = ""):
 def table_container_end():
     """Đóng container bảng."""
     st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_table(df, hide_index: bool = True, max_height: int = 420):
+    """Render pandas DataFrame dưới dạng HTML table với font Times New Roman.
+
+    Thay thế st.dataframe() để đảm bảo font Times New Roman hiển thị
+    đúng (st.dataframe dùng canvas — CSS không vào được).
+    """
+    import pandas as pd
+
+    if df is None or (hasattr(df, '__len__') and len(df) == 0):
+        st.info("Không có dữ liệu.")
+        return
+
+    # Chuyển sang DataFrame nếu là list/dict
+    if not isinstance(df, pd.DataFrame):
+        df = pd.DataFrame(df)
+
+    # --- Build HTML ---
+    th_style = (
+        "padding:8px 14px;"
+        "text-align:left;"
+        "font-weight:700;"
+        "font-size:0.75rem;"
+        "font-family:'Times New Roman',Times,serif;"
+        "color:#7A84A0;"
+        "text-transform:uppercase;"
+        "letter-spacing:0.5px;"
+        "background:#222633;"
+        "border-bottom:2px solid #2E3348;"
+        "white-space:nowrap;"
+    )
+    header_cells = "".join(
+        f'<th style="{th_style}">{col}</th>'
+        for col in df.columns
+    )
+    if not hide_index:
+        header_cells = f'<th style="{th_style}">#</th>' + header_cells
+
+    rows_html = ""
+    for i, (idx, row) in enumerate(df.iterrows()):
+        bg = "#1A1D27" if i % 2 == 0 else "#1E2130"
+        td_style = (
+            f"padding:7px 14px;"
+            f"font-size:0.85rem;"
+            f"font-family:'Times New Roman',Times,serif;"
+            f"color:#B8C2DB;"
+            f"border-bottom:1px solid #2E3348;"
+            f"white-space:nowrap;"
+            f"background:{bg};"
+        )
+        cells = "".join(
+            f'<td style="{td_style}">{val}</td>'
+            for val in row
+        )
+        if not hide_index:
+            cells = f'<td style="{td_style};color:#7A84A0;">{idx}</td>' + cells
+        rows_html += f"<tr>{cells}</tr>"
+
+    scroll_style = (
+        f"overflow-x:auto;"
+        f"overflow-y:auto;"
+        f"max-height:{max_height}px;"
+        f"border-radius:12px;"
+        f"border:1px solid #2E3348;"
+        f"scrollbar-width:thin;"
+        f"scrollbar-color:#444C66 #1A1D27;"
+    )
+    html = (
+        f'<div style="{scroll_style}">'
+        f'<table style="width:100%;border-collapse:collapse;'
+        f"font-family:'Times New Roman',Times,serif;\">"
+        f"<thead><tr>{header_cells}</tr></thead>"
+        f"<tbody>{rows_html}</tbody>"
+        f"</table></div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def status_badge(text: str, variant: str) -> str:

@@ -30,6 +30,7 @@ from ui.components import (
     table_container_end,
     tab_empty_state,
     format_vnd,
+    render_table,
 )
 from ui.charts import (
     create_hedging_payoff_chart,
@@ -462,11 +463,7 @@ def _render_allocation_table(stocks, cw_list, greeks):
 
     if rows:
         table_container("Phân Bổ Danh Mục", badge=f"{len(rows)} vị thế")
-        st.dataframe(
-            pd.DataFrame(rows),
-            use_container_width=True,
-            hide_index=True,
-        )
+        render_table(pd.DataFrame(rows))
         table_container_end()
 
         # CSV export

@@ -7,7 +7,7 @@ from core.greeks import GreeksCalculator
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import (
     create_pnl_heatmap,
@@ -131,7 +131,7 @@ def _render_pnl_heatmap(analyzer, cw):
         closest_t = min(time_steps, key=lambda d: abs(d - current_days_left))
         current_marker = (f"{closest_t} ngày", f"{S:,.0f}")
 
-    chart_container("Bảng Nhiệt Lãi/Lỗ: Giá Cổ Sở × Ngày Còn Lại")
+    chart_container("Bảng Nhiệt Lãi/Lỗ: Giá Cơ Sở × Ngày Còn Lại")
     fig = create_pnl_heatmap(z_data, price_labels, time_labels, be_y, current_marker)
     st.plotly_chart(fig, use_container_width=True)
     chart_container_end()
@@ -332,7 +332,7 @@ def _render_quick_scenarios(analyzer, cw):
             pnl_pos = ""
             if qty and entry_p and qty > 0 and entry_p > 0:
                 pnl_vnd = (cw_new - entry_p) * qty
-                pnl_pos = f"<div style='font-size:11px;color:#94A3B8;'>Vị thế: {pnl_vnd:+,.0f}đ</div>"
+                pnl_pos = f"<div style='font-size:11px;color:#94A3B8;'>Vị thế: {pnl_vnd:+,.0f} đ</div>"
 
             pnl_color = "#22C55E" if pnl >= 0 else "#EF4444"
 
@@ -547,7 +547,7 @@ def _render_holding_analysis(analyzer, cw):
     df = pd.DataFrame(rows)
 
     table_container("Chỉ Số Theo Thời Gian Nắm Giữ", badge=f"{len(periods)} giai đoạn")
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    render_table(df)
     table_container_end()
 
 
@@ -566,7 +566,31 @@ def _render_custom_scenario(analyzer, cw):
     cw_price = cw["cw_price"]
     max_days = max(int(cw["T"] * 365), 2)
 
-    col1, col2, col3 = st.columns(3)
+    # Reset state khi CW thay đổi
+    prev_S = st.session_state.get("_custom_scenario_prev_S", None)
+    if prev_S != S:
+        st.session_state["custom_new_s"] = float(round(S))
+        st.session_state["custom_ds"] = 0.0
+        st.session_state["_custom_scenario_prev_S"] = S
+
+    # Lưu S để callbacks truy cập
+    st.session_state["_custom_scenario_S"] = S
+
+    # Callbacks đồng bộ 2 chiều slider ↔ number_input
+    def _on_slider_pct_change():
+        s = st.session_state.get("_custom_scenario_S", 1.0)
+        ds = st.session_state.get("custom_ds", 0.0)
+        st.session_state["custom_new_s"] = float(round(s * (1 + ds / 100.0)))
+
+    def _on_price_input_change():
+        s = st.session_state.get("_custom_scenario_S", 1.0)
+        new_s = st.session_state.get("custom_new_s", s)
+        if s > 0 and new_s > 0:
+            pct = (new_s / s - 1) * 100.0
+            pct = max(-30.0, min(30.0, round(pct * 2) / 2))
+            st.session_state["custom_ds"] = pct
+
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 1.5])
 
     with col1:
         ds_pct = st.slider(
@@ -574,6 +598,7 @@ def _render_custom_scenario(analyzer, cw):
             min_value=-30.0, max_value=30.0,
             value=0.0, step=0.5,
             key="custom_ds",
+            on_change=_on_slider_pct_change,
         )
     with col2:
         div_pts = st.slider(
@@ -590,8 +615,30 @@ def _render_custom_scenario(analyzer, cw):
             value=0, step=1,
             key="custom_hold",
         )
+    with col4:
+        if "custom_new_s" not in st.session_state:
+            st.session_state["custom_new_s"] = float(round(S))
+        new_S_input = st.number_input(
+            "Giá cơ sở mới",
+            min_value=1.0,
+            step=100.0,
+            format="%.0f",
+            key="custom_new_s",
+            on_change=_on_price_input_change,
+            help="Nhập trực tiếp giá cơ sở mới (đ). Tự động cập nhật slider % và ngược lại.",
+        )
+        _ns_val = float(new_S_input)
+        _ns_pct = (_ns_val / S - 1) * 100 if S > 0 else 0.0
+        _ns_color = "#22C55E" if _ns_pct >= 0 else "#EF4444"
+        st.markdown(
+            f'<div style="margin-top:-8px;font-size:0.72rem;color:#8896AB;line-height:1.4;">'
+            f'<span style="color:#B8C2DB;font-weight:600;">{_ns_val:,.0f} đ</span>'
+            f'&nbsp;<span style="color:{_ns_color};">({_ns_pct:+.2f}%)</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
-    new_S = S * (1 + ds_pct / 100.0)
+    new_S = float(new_S_input)
     new_sigma = max(sigma + div_pts / 100.0, 0.01)
     T_new = max((max_days - hold) / 365.0, 0.001)
 
@@ -616,12 +663,16 @@ def _render_custom_scenario(analyzer, cw):
     pnl_pct = (pnl / cw_price * 100) if cw_price > 0 else 0
     pnl_color = "#22C55E" if pnl >= 0 else "#EF4444"
 
+    # Tính % thay đổi thực tế từ giá nhập
+    actual_ds_pct = (new_S / S - 1) * 100 if S > 0 else 0.0
+
     # Hiển thị kết quả
     st.markdown(
         f'<div style="text-align:center;padding:12px 0;">'
         f'<span style="font-size:18px;color:#8896AB;">Kịch bản: </span>'
         f'<span style="font-size:18px;color:#F1F5F9;font-weight:700;">'
-        f'Cơ sở {ds_pct:+.1f}%, Biến động {div_pts:+.1f} điểm, {hold} ngày</span>'
+        f'Cơ sở {actual_ds_pct:+.1f}% ({format_vnd(new_S)} đ), '
+        f'Biến động {div_pts:+.1f} điểm, {hold} ngày</span>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -637,7 +688,7 @@ def _render_custom_scenario(analyzer, cw):
             delta=f"từ {format_vnd(cw_price)} đ",
         )
     with r2:
-        colored_metric("Lãi/Lỗ (%)", f"{pnl_pct:+.1f}%", color=pnl_color)
+        colored_metric("Lãi/Lỗ (%)", f"{pnl_pct:+,.1f}%", color=pnl_color)
     with r3:
         colored_metric("Lãi/Lỗ (đ/CW)", f"{pnl:+,.0f} đ", color=pnl_color)
     with r4:
@@ -648,7 +699,7 @@ def _render_custom_scenario(analyzer, cw):
             t_color = "#22C55E" if pnl_total >= 0 else "#EF4444"
             colored_metric("Lãi/Lỗ Vị Thế", f"{pnl_total:+,.0f} đ", color=t_color)
         else:
-            colored_metric("Giá Cổ Sở Mới", f"{format_vnd(new_S)} đ", color="#3B82F6")
+            colored_metric("Giá Cơ Sở Mới", f"{format_vnd(new_S)} đ", color="#3B82F6")
 
     # Bảng so sánh chỉ số Hy Lạp
     section_divider()
@@ -687,5 +738,5 @@ def _render_custom_scenario(analyzer, cw):
     ]
 
     table_container("Chỉ Số Hy Lạp: Hiện Tại và Kịch Bản", badge="5 chỉ số")
-    st.dataframe(pd.DataFrame(compare_data), use_container_width=True, hide_index=True)
+    render_table(pd.DataFrame(compare_data))
     table_container_end()

@@ -5,7 +5,7 @@ from core.warrant import WarrantAnalyzer
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import (
     create_radar_chart,
@@ -368,7 +368,7 @@ def render_cw_compare_tab():
 
     result_df = pd.DataFrame(table_rows)
     table_container("Bảng So Sánh Chi Tiết", badge=f"{len(valid)} CW")
-    st.dataframe(result_df, use_container_width=True, hide_index=True)
+    render_table(result_df)
     table_container_end()
 
     # Export

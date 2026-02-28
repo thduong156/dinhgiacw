@@ -4,7 +4,7 @@ from core.black_scholes import BlackScholesModel
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import create_iv_sensitivity
 
@@ -133,7 +133,7 @@ def render_iv_tab(cw):
             })
 
         table_container("Giá CW theo Volatility", badge=f"{len(rows)} mức")
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        render_table(rows)
         table_container_end()
 
     # Giải thích

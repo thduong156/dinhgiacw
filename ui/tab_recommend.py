@@ -8,7 +8,7 @@ from core.scoring import score_cw as _score_cw_core, grade_label as _grade_label
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import (
     create_budget_pie_chart, create_budget_bar_chart,
@@ -318,7 +318,7 @@ def render_recommend_tab():
 
     result_df = pd.DataFrame(table_rows)
     table_container("Bảng Xếp Hạng Toàn Bộ", badge=f"{len(results)} CW")
-    st.dataframe(result_df, use_container_width=True, hide_index=True)
+    render_table(result_df)
     table_container_end()
 
     # Export
@@ -518,7 +518,7 @@ def _render_budget_allocation(results):
             "Trạng Thái": "× Loại (KV âm)",
         })
     table_container("Kỳ Vọng & Rủi Ro Từng CW", badge=f"{len(asset_rows)} CW")
-    st.dataframe(pd.DataFrame(asset_rows), use_container_width=True, hide_index=True)
+    render_table(pd.DataFrame(asset_rows))
     table_container_end()
 
     # --- PHẦN 2: Phân bổ ngân sách ---
@@ -672,7 +672,7 @@ def _render_budget_allocation(results):
 
     alloc_df = pd.DataFrame(table_rows)
     table_container("Chi Tiết Phân Bổ", badge=f"{len(allocations)} CW")
-    st.dataframe(alloc_df, use_container_width=True, hide_index=True)
+    render_table(alloc_df)
     table_container_end()
 
     # --- Tổng kết portfolio ---
@@ -713,7 +713,7 @@ def _render_budget_allocation(results):
             columns=asset_names,
         )
         table_container("Correlation Matrix", badge=f"{len(asset_names)}x{len(asset_names)}")
-        st.dataframe(corr_df, use_container_width=True)
+        render_table(corr_df.reset_index())
         table_container_end()
         corr_note = (
             'Tương quan được tính từ <b>dữ liệu thực tế</b> khi có đủ lịch sử '

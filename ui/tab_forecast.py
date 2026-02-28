@@ -4,7 +4,7 @@ from core.warrant import WarrantAnalyzer
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import create_scenario_heatmap, create_3d_surface, create_time_decay_chart
 
@@ -139,7 +139,7 @@ def render_forecast_tab(cw):
                 "Lời/Lỗ (đ)": f"{pnl:+,.0f}",
                 "% L/L": f"{pnl_pct:+.1f}%",
             })
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        render_table(rows)
         table_container_end()
 
     # Phần 4: Time Decay + 3D Surface

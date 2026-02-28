@@ -4,7 +4,7 @@ from core.warrant import WarrantAnalyzer
 from ui.components import (
     format_vnd, format_pct, section_title,
     tab_empty_state, chart_container, chart_container_end,
-    section_divider, table_container, table_container_end,
+    section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import create_batch_pd_bar, create_batch_leverage_scatter
 
@@ -98,7 +98,10 @@ def render_batch_tab():
                 pnl = (cw["cw_price"] - entry_p) * qty
                 pnl_pct = ((cw["cw_price"] / entry_p) - 1) * 100
                 result_row["SL"] = f"{qty:,}"
-                result_row["P&L"] = f"{pnl:+,.0f}đ ({pnl_pct:+.1f}%)"
+                result_row["P&L"] = f"{pnl:+,.0f} đ ({pnl_pct:+,.1f}%)"
+            else:
+                result_row["SL"] = "0"
+                result_row["P&L"] = "0"
 
             # Lưu raw values cho charts
             result_row["_pd_pct"] = analysis["premium_discount"]["percentage"]
@@ -127,7 +130,7 @@ def render_batch_tab():
 
     result_df = pd.DataFrame(display_results)
     table_container("Kết Quả Phân Tích", badge=f"{len(results)} CW")
-    st.dataframe(result_df, use_container_width=True, hide_index=True)
+    render_table(result_df)
     table_container_end()
 
     # Thống kê tổng hợp
