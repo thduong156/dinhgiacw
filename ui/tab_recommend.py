@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 import pandas as pd
 from core.warrant import WarrantAnalyzer
-from core.markowitz import run_markowitz
+from core.markowitz import run_markowitz, find_optimal_for_investor
 from core.scoring import score_cw as _score_cw_core, grade_label as _grade_label_core
 from ui.components import (
     format_vnd, format_pct, section_title, colored_metric,
@@ -424,12 +424,21 @@ def _render_budget_allocation(results):
     # --- PHẦN 1: Efficient Frontier ---
     section_title("△", "Efficient Frontier")
 
+    # Build investor_points cho 3 loại nhà đầu tư (A=6, 3, 1)
+    _inv_defs = [
+        {"key": "conservative", "name_vi": "Thận Trọng", "A": 6.0, "color": "#3B82F6"},
+        {"key": "balanced",     "name_vi": "Cân Bằng",   "A": 3.0, "color": "#F59E0B"},
+        {"key": "aggressive",   "name_vi": "Tích Cực",   "A": 1.0, "color": "#EF4444"},
+    ]
+    _investor_points = []
+    for _inv in _inv_defs:
+        _opt = find_optimal_for_investor(frontier, _inv["A"])
+        _investor_points.append({**_inv, **_opt})
+
     fig_frontier = create_efficient_frontier_chart(
-        frontier, assets,
-        mkz["max_sharpe_metrics"], mkz["min_var_metrics"],
-        mkz["max_sharpe_weights"], mkz["min_var_weights"],
+        frontier, _investor_points, assets, selected_type="balanced",
     )
-    chart_container("Efficient Frontier")
+    chart_container("Efficient Frontier — U = E[r] − (A/2)·σ²")
     st.plotly_chart(fig_frontier, use_container_width=True)
     chart_container_end()
 
