@@ -2402,3 +2402,228 @@ def create_price_forecast_chart(
     fig.update_xaxes(tickformat="%d/%m", tickangle=40)
     fig.update_yaxes(tickformat=",.1f")
     return fig
+
+
+# ── Issuer Hedge Charts ───────────────────────────────────────────
+
+
+def create_issuer_hedge_chart(df) -> go.Figure:
+    """
+    Biểu đồ lịch sử phòng ngừa rủi ro TCPH — 2 subplots.
+
+    Subplot trên (70%): Bar p_actual (xanh/đỏ theo dấu deviation) + Line P_T (teal dashed)
+    Subplot dưới (30%): Bar ΔpT% màu theo ngưỡng + horizontal lines ±10%/±20%
+
+    Args:
+        df: DataFrame từ get_hedge_dataframe() với cột:
+            date (datetime), p_theo (float), p_actual (float),
+            deviation_pct (float), status (str)
+    """
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        row_heights=[0.68, 0.32],
+        vertical_spacing=0.08,
+        subplot_titles=("Vị Thế Lý Thuyết P_T vs Thực Tế p_T", "Độ Lệch ΔpT%"),
+    )
+
+    dates   = df["date"]
+    p_theo  = df["p_theo"].fillna(0)
+    p_act   = df["p_actual"].fillna(0)
+    dev_pct = df["deviation_pct"].fillna(0)
+
+    # ── Subplot 1: Bar p_actual (màu theo dấu deviation) ──────────
+    bar_colors = [
+        "#22C55E" if d <= 0 else COLORS["negative"]
+        for d in dev_pct
+    ]
+    fig.add_trace(go.Bar(
+        x=dates, y=p_act,
+        name="p_T Thực Tế",
+        marker=dict(color=bar_colors, line_width=0),
+        opacity=0.72,
+        hovertemplate="<b>%{x|%d/%m/%Y}</b><br>p_T: %{y:,.0f} CP<extra>Thực Tế</extra>",
+    ), row=1, col=1)
+
+    # ── Subplot 1: Line P_T lý thuyết ────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=dates, y=p_theo,
+        name="P_T Lý Thuyết",
+        line=dict(color=COLORS["secondary"], width=2.5, dash="dash"),
+        mode="lines+markers",
+        marker=dict(size=5, color=COLORS["secondary"]),
+        hovertemplate="<b>%{x|%d/%m/%Y}</b><br>P_T: %{y:,.0f} CP<extra>Lý Thuyết</extra>",
+    ), row=1, col=1)
+
+    # ── Subplot 2: Bar ΔpT% màu theo ngưỡng ──────────────────────
+    dev_colors = []
+    for d in dev_pct:
+        if abs(d) <= 10:
+            dev_colors.append("#22C55E")
+        elif abs(d) <= 20:
+            dev_colors.append("#F59E0B")
+        else:
+            dev_colors.append("#EF4444")
+
+    fig.add_trace(go.Bar(
+        x=dates, y=dev_pct,
+        name="ΔpT%",
+        marker=dict(color=dev_colors, line_width=0),
+        hovertemplate="<b>%{x|%d/%m/%Y}</b><br>ΔpT: %{y:+.2f}%<extra></extra>",
+    ), row=2, col=1)
+
+    # ── Horizontal reference lines cho subplot 2 (dùng add_shape) ─
+    # Xác định dải x cho shapes (paper reference không phụ thuộc data)
+    for thresh, color in [(10, "#22C55E"), (-10, "#22C55E"),
+                          (20, "#F59E0B"), (-20, "#F59E0B")]:
+        fig.add_shape(
+            type="line",
+            xref="paper", x0=0, x1=1,
+            yref="y2",    y0=thresh, y1=thresh,
+            line=dict(color=color, width=1, dash="dot"),
+            opacity=0.55,
+        )
+    # Zero line subplot 2
+    fig.add_shape(
+        type="line",
+        xref="paper", x0=0, x1=1,
+        yref="y2",    y0=0,  y1=0,
+        line=dict(color=COLORS["neutral"], width=1, dash="dot"),
+        opacity=0.35,
+    )
+
+    # ── Layout ────────────────────────────────────────────────────
+    grid_color = COLORS["grid"]
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text="<b>Lịch Sử Vị Thế Phòng Ngừa Rủi Ro TCPH</b>",
+            font=dict(size=14, color="#F0F4FF"), x=0.01,
+        ),
+        height=560,
+        hovermode="x unified",
+        barmode="overlay",
+        legend=dict(
+            orientation="h", y=1.06, x=0, xanchor="left",
+            font=dict(size=10), bgcolor="rgba(0,0,0,0)",
+        ),
+    )
+    fig.update_xaxes(gridcolor=grid_color, zeroline=False, row=1, col=1)
+    fig.update_xaxes(
+        gridcolor=grid_color, zeroline=False,
+        tickformat="%d/%m", tickangle=35, row=2, col=1,
+    )
+    fig.update_yaxes(
+        title_text="Số CP", gridcolor=grid_color,
+        title_font=dict(size=10, color="#8896AB"), row=1, col=1,
+    )
+    fig.update_yaxes(
+        title_text="ΔpT%", gridcolor=grid_color,
+        title_font=dict(size=10, color="#8896AB"), row=2, col=1,
+    )
+
+    return fig
+
+
+def create_issuer_forecast_chart(
+    forecast_data: list,
+    last_p_actual: float,
+    green_threshold: float = 10.0,
+    yellow_threshold: float = 20.0,
+) -> go.Figure:
+    """
+    Biểu đồ dự báo P_T trong N ngày tới (delta thay đổi khi T giảm dần).
+
+    Args:
+        forecast_data  : Output của forecast_hedge_positions().
+        last_p_actual  : Vị thế thực tế hiện tại (đường tham chiếu ngang).
+        green_threshold: Ngưỡng xanh (%) để vẽ tolerance band.
+        yellow_threshold: Ngưỡng vàng (%) để vẽ tolerance band.
+    """
+    valid = [d for d in forecast_data if d.get("p_theo") is not None]
+    if not valid:
+        fig = go.Figure()
+        fig.update_layout(**COMMON_LAYOUT,
+                          title=dict(text="Không có dữ liệu dự báo"))
+        return fig
+
+    dates       = [d["date"] for d in valid]
+    p_theo_vals = [d["p_theo"] for d in valid]
+
+    # Tolerance bands quanh last_p_actual
+    lo_g = last_p_actual * (1 - green_threshold  / 100)
+    hi_g = last_p_actual * (1 + green_threshold  / 100)
+    lo_y = last_p_actual * (1 - yellow_threshold / 100)
+    hi_y = last_p_actual * (1 + yellow_threshold / 100)
+
+    x_band = dates + list(reversed(dates))
+
+    fig = go.Figure()
+
+    # Vùng vàng (outer ±yellow%)
+    fig.add_trace(go.Scatter(
+        x=x_band,
+        y=[hi_y] * len(dates) + [lo_y] * len(dates),
+        fill="toself",
+        fillcolor=_hex_to_rgba("#F59E0B", 0.08),
+        line=dict(width=0),
+        showlegend=True,
+        name=f"±{yellow_threshold:.0f}% Ngưỡng Vàng",
+        hoverinfo="skip",
+    ))
+
+    # Vùng xanh (inner ±green%)
+    fig.add_trace(go.Scatter(
+        x=x_band,
+        y=[hi_g] * len(dates) + [lo_g] * len(dates),
+        fill="toself",
+        fillcolor=_hex_to_rgba("#22C55E", 0.12),
+        line=dict(width=0),
+        showlegend=True,
+        name=f"±{green_threshold:.0f}% Vùng An Toàn",
+        hoverinfo="skip",
+    ))
+
+    # Đường p_actual tham chiếu
+    fig.add_trace(go.Scatter(
+        x=dates,
+        y=[last_p_actual] * len(dates),
+        name=f"p_T Hiện Tại ({last_p_actual:,.0f} CP)",
+        line=dict(color=COLORS["neutral"], width=1.5, dash="dot"),
+        hoverinfo="skip",
+        showlegend=True,
+    ))
+
+    # Đường P_T dự báo
+    fig.add_trace(go.Scatter(
+        x=dates,
+        y=p_theo_vals,
+        name="P_T Dự Báo",
+        line=dict(color=COLORS["accent"], width=2.5),
+        mode="lines+markers",
+        marker=dict(size=4, color=COLORS["accent"]),
+        hovertemplate=(
+            "<b>%{x}</b><br>"
+            "P_T dự báo: %{y:,.0f} CP<extra></extra>"
+        ),
+    ))
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text="<b>Dự Báo Vị Thế Bắt Buộc P_T</b>  "
+                 "<span style='font-size:11px;color:#8896AB;'>"
+                 "(OI và σ giả định cố định, T giảm dần)</span>",
+            font=dict(size=14), x=0.01,
+        ),
+        height=420,
+        hovermode="x unified",
+        legend=dict(
+            orientation="h", y=1.06, x=0, xanchor="left",
+            font=dict(size=10), bgcolor="rgba(0,0,0,0)",
+        ),
+    )
+    _apply_axis_style(fig, "Ngày", "Số CP Lý Thuyết (P_T)")
+    fig.update_xaxes(tickformat="%d/%m", tickangle=35)
+
+    return fig
