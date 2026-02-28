@@ -10,6 +10,7 @@ from ui.components import (
     section_divider, table_container, table_container_end, render_table,
 )
 from ui.charts import (
+    COLORS,
     create_daily_price_chart, create_daily_pd_chart,
     create_daily_greeks_chart, create_backtesting_chart,
     create_backtest_price_chart, create_backtest_pd_chart,
