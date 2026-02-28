@@ -20,6 +20,7 @@ from ui.charts import (
     create_mc_fan_chart,
     create_mc_distribution,
     create_mc_contribution,
+    create_pnl_pdf_chart,
 )
 
 # ── Constants ─────────────────────────────────────────────────
@@ -240,7 +241,12 @@ def _render_results(
 
     section_divider()
 
-    # ── 4. Per-CW contribution (chỉ hiện khi danh mục > 1 CW) ─
+    # ── 4. Hàm Mật Độ Xác Suất (PDF / KDE) ───────────────────
+    _render_pdf_section(result, stats, confidence_level)
+
+    section_divider()
+
+    # ── 5. Per-CW contribution (chỉ hiện khi danh mục > 1 CW) ─
     if per_cw and not is_single:
         section_title("▣", "Đóng Góp Kỳ Vọng Từng CW")
         chart_container()
@@ -417,6 +423,114 @@ def _render_per_cw_table(per_cw: list[dict]):
     table_container()
     render_table(df)
     table_container_end()
+
+
+def _render_pdf_section(result: dict, stats: dict, confidence_level: float):
+    """Vẽ hàm mật độ xác suất KDE kèm bảng thống kê mô tả."""
+    import scipy.stats as _scipy_stats  # lazy import
+
+    section_title("∿", "Hàm Mật Độ Xác Suất (KDE)")
+
+    pnl_final  = result["pnl_final"]
+    mean_pnl   = float(stats["mean"])
+    median_pnl = float(stats["median"])
+
+    chart_col, stat_col = st.columns([3, 1])
+
+    with chart_col:
+        chart_container()
+        fig_pdf = create_pnl_pdf_chart(
+            pnl_final        = pnl_final,
+            var_level        = stats["var"],
+            cvar_level       = stats["cvar"],
+            pnl_baseline     = stats["pnl_baseline"],
+            confidence_level = confidence_level,
+            mean_pnl         = mean_pnl,
+            median_pnl       = median_pnl,
+        )
+        st.plotly_chart(fig_pdf, use_container_width=True)
+        chart_container_end()
+        st.caption(
+            "**KDE** (Kernel Density Estimation) ước lượng xác suất liên tục của PnL. "
+            "&nbsp;|&nbsp; **Vùng đỏ đậm**: tail risk vượt VaR. "
+            "&nbsp;|&nbsp; **p5/p25/p75/p95**: phân vị."
+        )
+
+    with stat_col:
+        st.markdown("**📊 Thống Kê Mô Tả**")
+
+        # Descriptive stats
+        try:
+            sk  = float(_scipy_stats.skew(pnl_final))
+            ku  = float(_scipy_stats.kurtosis(pnl_final))  # excess kurtosis
+        except Exception:
+            sk, ku = float("nan"), float("nan")
+
+        p5  = float(np.percentile(pnl_final, 5))
+        p25 = float(np.percentile(pnl_final, 25))
+        p75 = float(np.percentile(pnl_final, 75))
+        p95 = float(np.percentile(pnl_final, 95))
+        iqr = p75 - p25
+
+        rows_stat = [
+            ("Mean",      f"{mean_pnl:+,.0f}đ"),
+            ("Median",    f"{median_pnl:+,.0f}đ"),
+            ("Std Dev",   f"±{float(np.std(pnl_final)):,.0f}đ"),
+            ("Skewness",  f"{sk:.3f}"),
+            ("Kurtosis",  f"{ku:.3f}"),
+            ("IQR",       f"{iqr:,.0f}đ"),
+            ("p5",        f"{p5:+,.0f}đ"),
+            ("p25",       f"{p25:+,.0f}đ"),
+            ("p75",       f"{p75:+,.0f}đ"),
+            ("p95",       f"{p95:+,.0f}đ"),
+        ]
+
+        # Skewness interpretation
+        if not np.isnan(sk):
+            if sk < -0.5:
+                sk_note = "⬅ Lệch trái (đuôi lỗ dài)"
+            elif sk > 0.5:
+                sk_note = "➡ Lệch phải (đuôi lãi dài)"
+            else:
+                sk_note = "↔ Gần đối xứng"
+        else:
+            sk_note = ""
+
+        # Kurtosis interpretation
+        if not np.isnan(ku):
+            if ku > 1.0:
+                ku_note = "⚠ Đuôi béo (Leptokurtic)"
+            elif ku < -0.5:
+                ku_note = "Đuôi mỏng (Platykurtic)"
+            else:
+                ku_note = "Gần chuẩn (Mesokurtic)"
+        else:
+            ku_note = ""
+
+        for label, val in rows_stat:
+            st.markdown(
+                f'<div style="display:flex;justify-content:space-between;'
+                f'padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+                f'<span style="color:#8896AB;font-size:0.82rem;">{label}</span>'
+                f'<span style="font-size:0.82rem;font-weight:600;">{val}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        if sk_note:
+            st.markdown(
+                f'<div style="margin-top:8px;padding:6px 8px;'
+                f'background:rgba(255,255,255,0.04);border-radius:6px;'
+                f'font-size:0.80rem;color:#A0AEC0;">{sk_note}</div>',
+                unsafe_allow_html=True,
+            )
+        if ku_note:
+            st.markdown(
+                f'<div style="margin-top:4px;padding:6px 8px;'
+                f'background:rgba(255,255,255,0.04);border-radius:6px;'
+                f'font-size:0.80rem;color:#A0AEC0;">{ku_note}</div>',
+                unsafe_allow_html=True,
+            )
 
 
 # ============================================================

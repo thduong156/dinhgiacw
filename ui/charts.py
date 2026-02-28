@@ -1511,6 +1511,226 @@ def create_mc_distribution(
     return fig
 
 
+def create_pnl_pdf_chart(
+    pnl_final: "np.ndarray",
+    var_level: float,
+    cvar_level: float,
+    pnl_baseline: float,
+    confidence_level: float = 0.95,
+    mean_pnl: float = None,
+    median_pnl: float = None,
+) -> go.Figure:
+    """
+    Hàm mật độ xác suất (KDE) của PnL cuối kỳ.
+
+    - Vùng âm (PnL < 0): tô đỏ
+    - Vùng dương (PnL >= 0): tô xanh
+    - Vùng đuôi rủi ro (< VaR): tô đậm hơn
+    - Đường dọc: Mean, Median, VaR, Baseline
+    - Trục Y ẩn label (density values không có ý nghĩa trực tiếp với người dùng)
+    """
+    try:
+        from scipy.stats import gaussian_kde, skew, kurtosis as scipy_kurtosis
+        _has_scipy = True
+    except ImportError:
+        _has_scipy = False
+
+    fig = go.Figure()
+
+    # ── Tính KDE ───────────────────────────────────────────────
+    x_lo = float(np.percentile(pnl_final, 0.5))
+    x_hi = float(np.percentile(pnl_final, 99.5))
+    x_grid = np.linspace(x_lo, x_hi, 600)
+
+    if _has_scipy and len(pnl_final) >= 10:
+        kde = gaussian_kde(pnl_final, bw_method="scott")
+        density = kde(x_grid)
+    else:
+        # Fallback: normalized histogram
+        counts, edges = np.histogram(pnl_final, bins=80, density=True)
+        centers = 0.5 * (edges[:-1] + edges[1:])
+        density = np.interp(x_grid, centers, counts)
+
+    max_d = float(density.max()) if density.max() > 0 else 1.0
+
+    # ── Vùng tô: âm (đỏ) và dương (xanh) ─────────────────────
+    # Tìm điểm giao x = 0
+    zero_density = float(np.interp(0.0, x_grid, density)) if x_lo < 0 < x_hi else 0.0
+
+    # Vùng âm
+    if x_lo < 0:
+        x0_end = min(0.0, x_hi)
+        mask_neg = x_grid <= x0_end
+        xn = x_grid[mask_neg]
+        yn = density[mask_neg]
+        if len(xn) > 1:
+            fig.add_trace(go.Scatter(
+                x=np.concatenate([[xn[0]], xn, [x0_end, xn[0]]]),
+                y=np.concatenate([[0.0], yn, [0.0, 0.0]]),
+                fill="toself",
+                fillcolor=_hex_to_rgba(COLORS["negative"], 0.22),
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo="skip",
+                name="_neg_fill",
+            ))
+
+    # Vùng dương
+    if x_hi > 0:
+        x1_start = max(0.0, x_lo)
+        mask_pos = x_grid >= x1_start
+        xp = x_grid[mask_pos]
+        yp = density[mask_pos]
+        if len(xp) > 1:
+            fig.add_trace(go.Scatter(
+                x=np.concatenate([[x1_start, xp[0]], xp, [xp[-1], x1_start]]),
+                y=np.concatenate([[0.0, 0.0], yp, [0.0, 0.0]]),
+                fill="toself",
+                fillcolor=_hex_to_rgba(COLORS["positive"], 0.20),
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo="skip",
+                name="_pos_fill",
+            ))
+
+    # Vùng đuôi rủi ro (< VaR): tô đậm hơn
+    if x_lo <= var_level <= x_hi:
+        mask_tail = x_grid <= var_level
+        xt = x_grid[mask_tail]
+        yt = density[mask_tail]
+        if len(xt) > 1:
+            fig.add_trace(go.Scatter(
+                x=np.concatenate([[xt[0]], xt, [xt[-1], xt[0]]]),
+                y=np.concatenate([[0.0], yt, [0.0, 0.0]]),
+                fill="toself",
+                fillcolor=_hex_to_rgba(COLORS["negative"], 0.45),
+                line=dict(width=0),
+                showlegend=True,
+                name=f"Tail Risk (VaR {int(confidence_level*100)}%)",
+                hoverinfo="skip",
+            ))
+
+    # ── Đường KDE chính ───────────────────────────────────────
+    hover_text = [f"PnL: {x:,.0f}đ" for x in x_grid]
+    fig.add_trace(go.Scatter(
+        x=x_grid,
+        y=density,
+        mode="lines",
+        line=dict(color=COLORS["secondary"], width=2.5),
+        name="Hàm mật độ KDE",
+        text=hover_text,
+        hovertemplate="%{text}<extra></extra>",
+    ))
+
+    # ── Đường dọc: Zero ───────────────────────────────────────
+    fig.add_vline(
+        x=0,
+        line_dash="dot",
+        line_color="rgba(255,255,255,0.25)",
+        line_width=1,
+    )
+
+    # ── Đường dọc: Mean ───────────────────────────────────────
+    if mean_pnl is not None and x_lo <= mean_pnl <= x_hi:
+        mean_sign = "+" if mean_pnl >= 0 else ""
+        fig.add_vline(
+            x=mean_pnl,
+            line_dash="dash",
+            line_color=COLORS["blue"],
+            line_width=1.8,
+            annotation_text=f"E[PnL] {mean_sign}{mean_pnl:,.0f}đ",
+            annotation_position="top right",
+            annotation_font_color=COLORS["blue"],
+            annotation_font_size=11,
+        )
+
+    # ── Đường dọc: Median ─────────────────────────────────────
+    if median_pnl is not None and x_lo <= median_pnl <= x_hi:
+        med_sign = "+" if median_pnl >= 0 else ""
+        fig.add_vline(
+            x=median_pnl,
+            line_dash="dashdot",
+            line_color=COLORS["accent"],
+            line_width=1.5,
+            annotation_text=f"Median {med_sign}{median_pnl:,.0f}đ",
+            annotation_position="top left",
+            annotation_font_color=COLORS["accent"],
+            annotation_font_size=11,
+        )
+
+    # ── Đường dọc: Baseline ───────────────────────────────────
+    if x_lo <= pnl_baseline <= x_hi:
+        fig.add_vline(
+            x=pnl_baseline,
+            line_dash="dot",
+            line_color=COLORS["primary"],
+            line_width=1.4,
+            annotation_text="Baseline",
+            annotation_position="top",
+            annotation_font_color=COLORS["primary"],
+            annotation_font_size=10,
+        )
+
+    # ── Đường dọc: VaR ────────────────────────────────────────
+    conf_pct = int(confidence_level * 100)
+    fig.add_vline(
+        x=var_level,
+        line_dash="dash",
+        line_color=COLORS["negative"],
+        line_width=2,
+        annotation_text=f"VaR {conf_pct}%",
+        annotation_position="top right",
+        annotation_font_color=COLORS["negative"],
+        annotation_font_size=11,
+    )
+
+    # ── Percentile ticks (p5, p25, p75, p95) ─────────────────
+    pcts = {5: None, 25: None, 75: None, 95: None}
+    for p in pcts:
+        pcts[p] = float(np.percentile(pnl_final, p))
+
+    pct_colors = {5: "#E74C3C", 25: "#F59E0B", 75: "#10B981", 95: "#3B82F6"}
+    pct_y_frac = {5: 0.55, 25: 0.45, 75: 0.45, 95: 0.55}
+
+    for p, val in pcts.items():
+        if x_lo <= val <= x_hi:
+            fig.add_annotation(
+                x=val,
+                y=max_d * pct_y_frac[p],
+                text=f"p{p}",
+                showarrow=False,
+                font=dict(size=9, color=pct_colors[p]),
+                bgcolor="rgba(14,17,23,0.7)",
+                bordercolor=pct_colors[p],
+                borderwidth=1,
+                borderpad=2,
+            )
+
+    # ── Layout ────────────────────────────────────────────────
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text="∿ Hàm Mật Độ Xác Suất (KDE) — PnL Cuối Kỳ",
+            font=dict(size=14),
+        ),
+        height=420,
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.01,
+            xanchor="right",
+            x=1,
+            font=dict(size=11),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+    )
+    _apply_axis_style(fig, "PnL Cuối Kỳ (VNĐ)", "Mật Độ Xác Suất")
+    fig.update_xaxes(tickformat=",.0f")
+    fig.update_yaxes(showticklabels=False, zeroline=False)
+    return fig
+
+
 def create_mc_contribution(
     cw_names: list,
     expected_pnl: list,
