@@ -433,10 +433,17 @@ def _render_portfolio_overview(stocks, cw_list, investor_key):
     inv    = INVESTOR_TYPES[investor_key]
     greeks = calculate_net_greeks(stocks, cw_list)
 
-    delta_lo, delta_hi = _INVESTOR_DELTA_TARGET[investor_key]
-    total_val = greeks["total_value"]
-    stock_pct = greeks["stock_pct"]
-    net_d     = greeks["net_delta"]
+    lo_ratio, hi_ratio = _INVESTOR_DELTA_TARGET[investor_key]
+    total_val  = greeks["total_value"]
+    stock_pct  = greeks["stock_pct"]
+    net_d      = greeks["net_delta"]
+
+    # Tính target delta tuyệt đối
+    stock_delta  = float(sum(sp.current_price and sp.quantity or 0 for sp in stocks))
+    base_delta   = max(sum(sp.quantity for sp in stocks) if stocks else 0,
+                       abs(net_d), 1.0)
+    delta_lo_abs = base_delta * lo_ratio
+    delta_hi_abs = base_delta * hi_ratio
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
@@ -450,12 +457,12 @@ def _render_portfolio_overview(stocks, cw_list, investor_key):
             delta_color=inv["color"],
         )
     with c3:
-        in_delta  = delta_lo <= net_d <= delta_hi if total_val > 0 else True
-        d_color   = "#22C55E" if in_delta else "#EF4444"
+        in_delta = delta_lo_abs <= net_d <= delta_hi_abs if total_val > 0 else True
+        d_color  = "#22C55E" if in_delta else "#EF4444"
         colored_metric(
             "Net Delta", f"{net_d:,.1f}",
             color=d_color,
-            delta=f"Target: {delta_lo:.1f} – {delta_hi:.1f}",
+            delta=f"Target: {delta_lo_abs:,.0f} – {delta_hi_abs:,.0f}",
             delta_color=d_color,
         )
     with c4:
@@ -474,9 +481,9 @@ def _render_strategies(stocks, cw_list, investor_key, greeks):
     section_title("◇", "Chiến Lược Phòng Hộ")
 
     strat_tabs = st.tabs([
-        "▪ Protective Put",
-        "△ Delta Hedging",
-        "◎ Combined Portfolio",
+        "▪ Mua Bảo Hiểm Put",
+        "△ Cân Bằng Delta",
+        "◎ Danh Mục Kết Hợp",
     ])
 
     # ── A: Protective Put ──
@@ -533,26 +540,53 @@ def _render_strategies(stocks, cw_list, investor_key, greeks):
                         chart_container_end()
                     section_divider()
 
-    # ── B: Delta Hedging ──
+    # ── B: Cân Bằng Delta ──
     with strat_tabs[1]:
-        delta_lo, delta_hi = _INVESTOR_DELTA_TARGET[investor_key]
-        target_mid = (delta_lo + delta_hi) / 2
         inv = INVESTOR_TYPES[investor_key]
+
+        # Tính base delta từ cổ phiếu (1 delta/cổ phiếu) + delta CW hiện tại
+        stock_delta = float(sum(sp.quantity for sp in stocks)) if stocks else 0.0
+        current_net = float(greeks["net_delta"])
+        # Base = lấy delta cổ phiếu làm gốc; nếu không có CP dùng net delta
+        base_delta = max(stock_delta, abs(current_net), 1.0)
+
+        # Chuyển ratio → giá trị tuyệt đối
+        lo_ratio, hi_ratio = _INVESTOR_DELTA_TARGET[investor_key]
+        delta_lo_abs = base_delta * lo_ratio
+        delta_hi_abs = base_delta * hi_ratio
+        target_mid   = (delta_lo_abs + delta_hi_abs) / 2.0
+
+        # Tính step gọn: ~1/50 của range
+        raw_step = (delta_hi_abs - delta_lo_abs) / 50.0
+        if   raw_step >= 10000: step_val = round(raw_step / 10000) * 10000
+        elif raw_step >= 1000:  step_val = round(raw_step / 1000)  * 1000
+        elif raw_step >= 100:   step_val = round(raw_step / 100)   * 100
+        elif raw_step >= 10:    step_val = round(raw_step / 10)    * 10
+        elif raw_step >= 1:     step_val = max(round(raw_step), 1)
+        else:                   step_val = 1.0
 
         st.markdown(
             f'<div class="info-box" style="border-color:{inv["border"]};">'
             f'Target Net Delta cho <b>{inv["name_vi"]}</b> (A={inv["A"]:.0f}): '
-            f'<b>{delta_lo:.1f} – {delta_hi:.1f}</b>'
+            f'<b>{delta_lo_abs:,.0f} – {delta_hi_abs:,.0f}</b>'
+            f'&nbsp;<span style="color:#8896AB;font-size:0.8em;">'
+            f'({lo_ratio*100:.0f}–{hi_ratio*100:.0f}% delta cổ phiếu)</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
+        # Reset slider khi investor_key thay đổi
+        prev_key = st.session_state.get("_hedge_delta_prev_key")
+        if prev_key != investor_key:
+            st.session_state["hedge_target_delta"] = float(target_mid)
+            st.session_state["_hedge_delta_prev_key"] = investor_key
+
         target_input = st.slider(
             "Target Delta",
-            min_value=float(delta_lo),
-            max_value=float(delta_hi),
-            value=float(target_mid),
-            step=0.05,
+            min_value=float(delta_lo_abs),
+            max_value=float(delta_hi_abs),
+            value=float(st.session_state.get("hedge_target_delta", target_mid)),
+            step=float(step_val),
             key="hedge_target_delta",
         )
 
