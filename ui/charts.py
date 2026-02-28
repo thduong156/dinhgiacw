@@ -625,21 +625,15 @@ def create_budget_bar_chart(allocations):
 
 
 # ============================================================
-# MARKOWITZ EFFICIENT FRONTIER
+# MARKOWITZ EFFICIENT FRONTIER (legacy — replaced by create_efficient_frontier_chart below)
 # ============================================================
 
-def create_efficient_frontier_chart(frontier, assets, max_sharpe_metrics,
-                                    min_var_metrics, max_sharpe_weights,
-                                    min_var_weights):
+def _create_efficient_frontier_chart_legacy(frontier, assets, max_sharpe_metrics,
+                                            min_var_metrics, max_sharpe_weights,
+                                            min_var_weights):
     """
-    Biểu đồ Efficient Frontier — scatter plot + 2 portfolio tối ưu.
-
-    Parameters:
-        frontier: dict from generate_efficient_frontier()
-        assets: list[CWAsset]
-        max_sharpe_metrics: (return, vol, sharpe)
-        min_var_metrics: (return, vol, sharpe)
-        max_sharpe_weights, min_var_weights: np.ndarray
+    [DEPRECATED] Biểu đồ Efficient Frontier — scatter plot + 2 portfolio tối ưu.
+    Đã thay thế bởi create_efficient_frontier_chart() với 3 investor types.
     """
     fig = go.Figure()
 
