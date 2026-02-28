@@ -2,7 +2,7 @@
 
 import streamlit as st
 import pandas as pd
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from ui.components import (
     format_vnd, section_title, colored_metric,
@@ -13,6 +13,7 @@ from ui.charts import (
     create_daily_price_chart, create_daily_pd_chart,
     create_daily_greeks_chart, create_backtesting_chart,
     create_backtest_price_chart, create_backtest_pd_chart,
+    create_price_forecast_chart,
 )
 from data.daily_tracker import (
     save_daily_record, load_daily_history, get_all_tracked_cw,
@@ -695,4 +696,313 @@ def _render_backtest_section():
                 lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A")
         table_container("Dữ Liệu Lịch Sử", badge=f"{len(df)} ngày")
         render_table(pd.DataFrame(display_cols))
+        table_container_end()
+
+    # ── Phân tích hiệu quả + dự phóng giá ─────────────────────
+    _render_backtest_analysis(df, selected_bt)
+
+
+# ============================================================
+# ANALYSIS: EFFICIENCY + FORECAST
+# ============================================================
+
+def _render_backtest_analysis(df: "pd.DataFrame", selected_bt: str):
+    """
+    Phân tích sâu kết quả backtest:
+      1. Chỉ số đo lường sai số (MAE, RMSE, MAPE, R², Bias)
+      2. Xếp hạng mức độ phù hợp mô hình + giải thích
+      3. Xu hướng Premium/Discount (hồi quy tuyến tính)
+      4. Dự phóng giá tương lai (BS + điều chỉnh bias ±RMSE)
+    """
+    import numpy as np
+    from scipy import stats as _sp
+
+    # ── Dữ liệu đầu vào ──────────────────────────────────────
+    mkt    = df["cw_price"].values.astype(float)
+    theory = df["theoretical_price"].values.astype(float)
+    valid  = np.isfinite(mkt) & np.isfinite(theory)
+    mkt_v  = mkt[valid]
+    theo_v = theory[valid]
+    n      = len(mkt_v)
+
+    if n < 2:
+        return   # không đủ dữ liệu
+
+    gap = mkt_v - theo_v   # + = premium, - = discount
+
+    # ── Chỉ số sai số ────────────────────────────────────────
+    mae      = float(np.mean(np.abs(gap)))
+    rmse     = float(np.sqrt(np.mean(gap ** 2)))
+    mape     = float(np.mean(np.abs(gap) / np.where(theo_v > 0, theo_v, 1)) * 100)
+    bias     = float(np.mean(gap))
+    mean_t   = float(np.mean(theo_v))
+    bias_pct = bias / mean_t * 100 if mean_t > 0 else 0.0
+
+    ss_res = float(np.sum((mkt_v - theo_v) ** 2))
+    ss_tot = float(np.sum((mkt_v - np.mean(mkt_v)) ** 2))
+    r2     = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+
+    # ── Xu hướng P/D (hồi quy) ───────────────────────────────
+    if "premium_discount_pct" in df.columns:
+        pd_full = df["premium_discount_pct"].values.astype(float)
+        pd_vals = pd_full[valid]
+    else:
+        pd_vals = gap / np.where(theo_v > 0, theo_v, 1) * 100
+
+    pd_ok = np.isfinite(pd_vals)
+    if pd_ok.sum() >= 2:
+        x_idx = np.arange(n, dtype=float)[pd_ok]
+        slope_pd, intercept_pd, rval_pd, pval_pd, _ = _sp.linregress(x_idx, pd_vals[pd_ok])
+    else:
+        slope_pd, intercept_pd, rval_pd, pval_pd = 0.0, 0.0, 0.0, 1.0
+
+    # ── Xếp hạng mô hình ─────────────────────────────────────
+    if   r2 >= 0.92 and mape < 6:
+        stars, eff_label, eff_col = "★★★★★", "Rất Tốt",    "#2ECC71"
+    elif r2 >= 0.78 and mape < 12:
+        stars, eff_label, eff_col = "★★★★☆", "Tốt",        "#52D68A"
+    elif r2 >= 0.55 and mape < 22:
+        stars, eff_label, eff_col = "★★★☆☆", "Trung Bình", "#F59E0B"
+    else:
+        stars, eff_label, eff_col = "★★☆☆☆", "Kém",        "#E74C3C"
+
+    # ── PHẦN HIỂN THỊ ─────────────────────────────────────────
+    st.markdown("---")
+    section_title("◈", "Phân Tích Hiệu Quả Mô Hình & Dự Phóng Giá")
+
+    # 1. Năm metric cards
+    st.markdown(
+        '<p style="color:#8896AB;font-size:0.85rem;margin-bottom:4px;">'
+        'Chỉ Số Đo Lường Sai Số</p>',
+        unsafe_allow_html=True,
+    )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        colored_metric("MAE", f"{mae:,.2f}đ",
+                       "#FFE66D")
+    with c2:
+        rmse_col = "#2ECC71" if rmse < mae * 1.3 else "#F59E0B"
+        colored_metric("RMSE", f"{rmse:,.2f}đ", rmse_col)
+    with c3:
+        mape_col = "#2ECC71" if mape < 10 else ("#F59E0B" if mape < 20 else "#E74C3C")
+        colored_metric("MAPE", f"{mape:.2f}%", mape_col)
+    with c4:
+        r2_col = "#2ECC71" if r2 >= 0.80 else ("#F59E0B" if r2 >= 0.55 else "#E74C3C")
+        colored_metric("R²", f"{r2:.4f}", r2_col)
+    with c5:
+        bias_col = "#2ECC71" if abs(bias_pct) < 3 else ("#F59E0B" if abs(bias_pct) < 8 else "#E74C3C")
+        bias_sign = "+" if bias >= 0 else ""
+        colored_metric("Bias", f"{bias_sign}{bias_pct:.2f}%", bias_col)
+
+    section_divider()
+
+    # 2. Rating + Giải thích (2 cột)
+    rat_col, interp_col = st.columns([1, 2])
+
+    with rat_col:
+        st.markdown(
+            f'<div style="background:rgba(255,255,255,0.04);border-radius:10px;'
+            f'padding:18px 12px;text-align:center;'
+            f'border:1px solid {eff_col}55;">'
+            f'<div style="font-size:1.6rem;letter-spacing:3px;margin-bottom:6px;">'
+            f'{stars}</div>'
+            f'<div style="font-size:1.05rem;font-weight:700;color:{eff_col};">'
+            f'{eff_label}</div>'
+            f'<div style="font-size:0.75rem;color:#8896AB;margin-top:6px;">'
+            f'Độ phù hợp mô hình BS</div>'
+            f'<div style="margin-top:10px;font-size:0.80rem;color:#A0AEC0;'
+            f'line-height:1.6;">'
+            f'MAPE = <b style="color:{mape_col};">{mape:.1f}%</b><br>'
+            f'R² &nbsp;= <b style="color:{r2_col};">{r2:.3f}</b><br>'
+            f'Bias = <b style="color:{bias_col};">{bias_sign}{bias:.1f}đ</b>'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    with interp_col:
+        # Giải thích Bias
+        if abs(bias_pct) < 2.0:
+            bias_note = (
+                "🟢 **Bias ~0%** — Giá thị trường xấp xỉ lý thuyết. "
+                "Mô hình Black-Scholes định giá tốt với sigma đã nhập."
+            )
+        elif bias_pct > 0:
+            bias_note = (
+                f"🔶 **Premium {bias_pct:+.1f}%** — Thị trường giao dịch **cao hơn** lý thuyết. "
+                "Nguyên nhân: thanh khoản tốt, kỳ vọng thị trường về biến động cao hơn sigma lịch sử, "
+                "hoặc cầu mua CW đang cao. Cân nhắc dùng IV thay HV."
+            )
+        else:
+            bias_note = (
+                f"🔵 **Discount {bias_pct:+.1f}%** — Thị trường giao dịch **thấp hơn** lý thuyết. "
+                "Nguyên nhân: thanh khoản kém, áp lực bán, hoặc sigma nhập vào quá cao. "
+                "Có thể là cơ hội mua nếu thanh khoản đảm bảo."
+            )
+
+        # Giải thích xu hướng P/D
+        slope_week = slope_pd * 5.0   # điểm %/tuần
+        sig_trend  = pval_pd < 0.10   # có ý nghĩa thống kê ở 10%
+        if not sig_trend or abs(slope_week) < 0.15:
+            trend_note = (
+                "↔ **P/D ổn định** — Chênh lệch thị trường vs lý thuyết không thay đổi "
+                "có ý nghĩa trong giai đoạn này."
+            )
+        elif slope_pd > 0:
+            trend_note = (
+                f"📈 **P/D mở rộng** (+{slope_week:.2f}%/tuần) — CW ngày càng đắt hơn "
+                "so với giá lý thuyết. Rủi ro: premium có thể co lại về gần đáo hạn "
+                "khi time-value giảm nhanh."
+            )
+        else:
+            trend_note = (
+                f"📉 **P/D thu hẹp** ({slope_week:.2f}%/tuần) — CW đang tiến về giá lý thuyết "
+                "(hội tụ). Xu hướng này thường xuất hiện khi đáo hạn gần, phù hợp để nắm giữ "
+                "nếu kỳ vọng cơ sở tăng."
+            )
+
+        # Giải thích R²
+        if r2 >= 0.90:
+            r2_note = (
+                "✅ **R² cao** — Mô hình bám sát chặt xu hướng giá thị trường. "
+                "Sigma nhập vào phù hợp với hành vi thực tế."
+            )
+        elif r2 >= 0.65:
+            r2_note = (
+                "⚠️ **R² trung bình** — Mô hình theo xu hướng nhưng còn sai lệch đáng kể. "
+                "Thử điều chỉnh sigma hoặc dùng implied volatility (σ ngầm định)."
+            )
+        else:
+            r2_note = (
+                "❌ **R² thấp** — Giá thị trường hành xử rất khác mô hình. "
+                "Gợi ý: kiểm tra lại sigma, sử dụng IV từ Tab σ Biến Động Ngầm Định, "
+                "hoặc xem xét yếu tố cầu/cung đặc biệt của CW này."
+            )
+
+        for note in [bias_note, trend_note, r2_note]:
+            st.markdown(note)
+            st.markdown("")
+
+    section_divider()
+
+    # ── 3. Dự Phóng Giá Tương Lai ────────────────────────────
+    section_title("▹", "Dự Phóng Giá Tương Lai")
+
+    cw_static   = _get_cw_static_from_portfolio(selected_bt)
+    mat_str     = cw_static.get("maturity_date", "")
+    mat_date    = None
+    for fmt in ("%d/%m/%Y", "%d/%m/%y", "%Y-%m-%d"):
+        try:
+            mat_date = datetime.strptime(mat_str, fmt).date()
+            break
+        except (ValueError, TypeError):
+            continue
+
+    if mat_date is None:
+        st.caption("⚠ Không có ngày đáo hạn — bỏ qua dự phóng giá.")
+        return
+
+    last_row    = df.iloc[-1]
+    last_date   = last_row["date"].date() if hasattr(last_row["date"], "date") else date.today()
+    K           = float(cw_static.get("K", 0))
+    cr          = float(cw_static.get("cr", 1))
+    r_rate      = float(cw_static.get("r", 0.03))
+    option_type = cw_static.get("option_type", "call")
+
+    # Sigma: ưu tiên giá trị mới nhất trong lịch sử
+    if "sigma" in df.columns and pd.notna(last_row.get("sigma")):
+        last_sigma = float(last_row["sigma"])
+    else:
+        last_sigma = float(cw_static.get("sigma", 0.30))
+
+    # S: ưu tiên lịch sử, fallback portfolio
+    if "S" in df.columns and pd.notna(last_row.get("S")):
+        last_S = float(last_row["S"])
+    else:
+        last_S = float(_get_portfolio_defaults(selected_bt).get("S", 0))
+
+    days_to_mat = (mat_date - last_date).days
+    forecast_n  = min(max(days_to_mat, 0), 30)
+
+    if forecast_n <= 0 or last_S <= 0 or K <= 0:
+        st.caption("⚠ CW đã đáo hạn hoặc thiếu dữ liệu giá. Bỏ qua dự phóng.")
+        return
+
+    # Tính giá lý thuyết tương lai
+    from core.black_scholes import BlackScholesModel as _BS
+    forecast_dates = [last_date + timedelta(days=d + 1) for d in range(forecast_n)]
+    forecast_theo  = []
+    for fd in forecast_dates:
+        T_left = max((mat_date - fd).days / 365.0, 1.0 / 365.0)
+        try:
+            p = _BS(last_S, K, T_left, r_rate, last_sigma, option_type).price() / cr
+            forecast_theo.append(float(p))
+        except Exception:
+            forecast_theo.append(None)
+
+    # Điều chỉnh bằng bias lịch sử
+    forecast_adj = [
+        (p + bias) if p is not None else None
+        for p in forecast_theo
+    ]
+
+    # Metric cards ngắn gọn
+    last_mkt    = float(last_row["cw_price"])
+    last_lt     = float(last_row["theoretical_price"])
+    last_adj    = last_lt + bias
+    delta_adj   = last_adj - last_mkt
+
+    fa1, fa2, fa3, fa4 = st.columns(4)
+    with fa1:
+        colored_metric("Giá TT Gần Nhất",    f"{last_mkt:,.2f}đ",   COLORS["primary"])
+    with fa2:
+        colored_metric("Giá LT Gần Nhất",    f"{last_lt:,.2f}đ",    COLORS["secondary"])
+    with fa3:
+        colored_metric("Dự Phóng ĐC (T+1)",  f"{last_adj:,.2f}đ",   COLORS["blue"])
+    with fa4:
+        delta_col = "#2ECC71" if delta_adj >= 0 else "#E74C3C"
+        delta_sign = "+" if delta_adj >= 0 else ""
+        colored_metric(
+            "ĐC vs TT",
+            f"{delta_sign}{delta_adj:,.2f}đ",
+            delta_col,
+        )
+
+    # Biểu đồ dự phóng
+    chart_container()
+    fig_fc = create_price_forecast_chart(
+        df_hist        = df,
+        forecast_dates = forecast_dates,
+        forecast_theo  = forecast_theo,
+        forecast_adj   = forecast_adj,
+        cw_code        = selected_bt,
+        bias           = bias,
+        rmse           = rmse,
+    )
+    st.plotly_chart(fig_fc, use_container_width=True)
+    chart_container_end()
+
+    st.caption(
+        f"**Dự phóng điều chỉnh** = Giá LT (BS) + Bias lịch sử ({bias:+.2f}đ). &nbsp;|&nbsp; "
+        f"**Vùng ±RMSE** ({rmse:,.2f}đ): biên độ bất định dựa trên sai số lịch sử. &nbsp;|&nbsp; "
+        f"**Giả định cố định**: S = {last_S:,.0f}đ, σ = {last_sigma*100:.1f}%. "
+        "Giá thực tế phụ thuộc vào biến động cơ sở và điều kiện thị trường."
+    )
+
+    # Bảng dự phóng chi tiết
+    with st.expander("▾ Xem Bảng Dự Phóng Chi Tiết"):
+        rows_fc = []
+        for i, fd in enumerate(forecast_dates):
+            t_val = forecast_theo[i]
+            a_val = forecast_adj[i]
+            rows_fc.append({
+                "Ngày":             fd.strftime("%d/%m/%Y"),
+                "T Còn Lại":        f"{(mat_date - fd).days} ngày",
+                "Giá LT (đ)":       f"{t_val:,.2f}" if t_val is not None else "N/A",
+                "Dự Phóng ĐC (đ)":  f"{a_val:,.2f}" if a_val is not None else "N/A",
+                "Biên Trên (đ)":    f"{(a_val + rmse):,.2f}" if a_val is not None else "N/A",
+                "Biên Dưới (đ)":    f"{max(a_val - rmse, 0):,.2f}" if a_val is not None else "N/A",
+                "ĐC vs TT Hiện":    f"{(a_val - last_mkt):+,.2f}" if a_val is not None else "N/A",
+            })
+        table_container("Dự Phóng Giá", badge=f"{forecast_n} ngày")
+        render_table(pd.DataFrame(rows_fc))
         table_container_end()

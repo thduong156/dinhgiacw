@@ -2268,3 +2268,136 @@ def create_efficient_frontier_chart(
     )
     _apply_axis_style(fig, "Rủi ro σ (%)", "Kỳ vọng lợi nhuận E[r] (%)")
     return fig
+
+
+# ── Backtest Analysis / Forecast Chart ───────────────────────────
+
+
+def create_price_forecast_chart(
+    df_hist,
+    forecast_dates: list,
+    forecast_theo: list,
+    forecast_adj: list,
+    cw_code: str,
+    bias: float,
+    rmse: float,
+) -> go.Figure:
+    """
+    Biểu đồ lịch sử giá thực tế + lý thuyết, kéo dài sang vùng dự phóng.
+
+    - Lịch sử: đường thị trường (cam) + đường lý thuyết (nét đứt teal)
+    - Dự phóng: đường LT (nét chấm teal) + đường điều chỉnh bias (xanh dương)
+    - Vùng bất định: ±RMSE xung quanh đường điều chỉnh (bán trong suốt)
+    - Đường dọc phân cách lịch sử | dự phóng
+    """
+    import pandas as pd
+
+    fig = go.Figure()
+
+    hist_dates  = pd.to_datetime(df_hist["date"])
+    mkt_prices  = df_hist["cw_price"].values.astype(float)
+    theo_prices = df_hist["theoretical_price"].values.astype(float)
+
+    # ── Lịch sử: Giá thị trường ──────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=hist_dates,
+        y=mkt_prices,
+        mode="lines+markers",
+        line=dict(color=COLORS["primary"], width=2.2),
+        marker=dict(size=4, color=COLORS["primary"]),
+        name="Giá Thị Trường",
+        hovertemplate="Thị Trường: %{y:,.2f}đ &nbsp; %{x|%d/%m/%Y}<extra></extra>",
+    ))
+
+    # ── Lịch sử: Giá lý thuyết ───────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=hist_dates,
+        y=theo_prices,
+        mode="lines",
+        line=dict(color=COLORS["secondary"], width=1.8, dash="dash"),
+        name="Giá Lý Thuyết (BS)",
+        hovertemplate="Lý Thuyết: %{y:,.2f}đ &nbsp; %{x|%d/%m/%Y}<extra></extra>",
+    ))
+
+    # ── Vùng dự phóng ────────────────────────────────────────
+    if forecast_dates and len(forecast_dates) > 0:
+        f_pd    = pd.to_datetime(forecast_dates)
+        f_theo  = np.array([v if v is not None else np.nan for v in forecast_theo], dtype=float)
+        f_adj   = np.array([v if v is not None else np.nan for v in forecast_adj],  dtype=float)
+
+        # Kết nối điểm cuối lịch sử → đầu dự phóng (không đứt đoạn)
+        conn_x_t = pd.concat([pd.Series(hist_dates.iloc[[-1]]), pd.Series(f_pd)])
+        conn_y_t = np.concatenate([[theo_prices[-1]], f_theo])
+        conn_x_a = pd.concat([pd.Series(hist_dates.iloc[[-1]]), pd.Series(f_pd)])
+        conn_y_a = np.concatenate([[mkt_prices[-1]], f_adj])
+
+        # Đường dự phóng lý thuyết (nét chấm)
+        fig.add_trace(go.Scatter(
+            x=conn_x_t,
+            y=conn_y_t,
+            mode="lines",
+            line=dict(color=COLORS["secondary"], width=1.8, dash="dot"),
+            name="Dự Phóng LT (BS)",
+            hovertemplate="Dự Phóng LT: %{y:,.2f}đ &nbsp; %{x|%d/%m/%Y}<extra></extra>",
+        ))
+
+        # Đường dự phóng điều chỉnh (bias + LT)
+        bias_sign = f"+{bias:.1f}" if bias >= 0 else f"{bias:.1f}"
+        fig.add_trace(go.Scatter(
+            x=conn_x_a,
+            y=conn_y_a,
+            mode="lines",
+            line=dict(color=COLORS["blue"], width=2.5),
+            name=f"Dự Phóng ĐC (LT {bias_sign}đ)",
+            hovertemplate="Dự Phóng ĐC: %{y:,.2f}đ &nbsp; %{x|%d/%m/%Y}<extra></extra>",
+        ))
+
+        # Vùng bất định ±RMSE
+        upper   = f_adj + rmse
+        lower   = f_adj - rmse
+        x_band  = list(f_pd) + list(reversed(list(f_pd)))
+        y_band  = list(upper) + list(reversed(list(lower)))
+        fig.add_trace(go.Scatter(
+            x=x_band,
+            y=y_band,
+            fill="toself",
+            fillcolor=_hex_to_rgba(COLORS["blue"], 0.09),
+            line=dict(width=0),
+            showlegend=True,
+            name=f"Vùng ±RMSE ({rmse:,.1f}đ)",
+            hoverinfo="skip",
+        ))
+
+        # Đường ngăn cách lịch sử | dự phóng
+        sep_str = str(hist_dates.iloc[-1].date())
+        fig.add_vline(
+            x=sep_str,
+            line_dash="dot",
+            line_color="rgba(255,255,255,0.22)",
+            line_width=1,
+            annotation_text="← Lịch Sử | Dự Phóng →",
+            annotation_position="top",
+            annotation_font_size=9,
+            annotation_font_color="rgba(180,180,180,0.7)",
+        )
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        title=dict(
+            text=f"◈ Dự Phóng Giá — {cw_code}",
+            font=dict(size=14),
+        ),
+        height=420,
+        hovermode="x unified",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom", y=1.01,
+            xanchor="right", x=1,
+            font=dict(size=10),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+    )
+    _apply_axis_style(fig, "", "Giá CW (VNĐ)")
+    fig.update_xaxes(tickformat="%d/%m", tickangle=40)
+    fig.update_yaxes(tickformat=",.1f")
+    return fig
