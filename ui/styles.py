@@ -1688,3 +1688,93 @@ def inject_tab_navigation():
 """, height=0)
 
 
+def inject_hide_github():
+    """
+    Ẩn icon GitHub trong toolbar Streamlit bằng JavaScript.
+    Dùng window.parent.document vì icon nằm ở parent frame (Streamlit Cloud wrapper).
+    MutationObserver đảm bảo ẩn ngay cả khi Streamlit re-render.
+    """
+    import streamlit.components.v1 as components
+    components.html("""
+<script>
+(function(){
+    if (window.parent._cwHideGhDone) return;
+    window.parent._cwHideGhDone = true;
+
+    function hide(doc) {
+        if (!doc) return;
+
+        /* 1. Ẩn mọi <a> dẫn tới github.com */
+        doc.querySelectorAll('a[href*="github.com"]').forEach(function(a) {
+            a.style.setProperty('display', 'none', 'important');
+            /* Ẩn luôn button / li cha gần nhất */
+            ['button','li','[role="button"]'].forEach(function(sel) {
+                var p = a.closest(sel);
+                if (p) p.style.setProperty('display', 'none', 'important');
+            });
+        });
+
+        /* 2. Ẩn viewerBadge (Streamlit Cloud "View source" badge) */
+        doc.querySelectorAll(
+            '[class*="viewerBadge"], [class*="ViewerBadge"]'
+        ).forEach(function(el) {
+            el.style.setProperty('display', 'none', 'important');
+        });
+
+        /* 3. Ẩn toolbar button có aria-label / title chứa "github" */
+        doc.querySelectorAll(
+            'button[aria-label*="ithub"], button[title*="ithub"], ' +
+            'a[aria-label*="ithub"], a[title*="ithub"]'
+        ).forEach(function(el) {
+            el.style.setProperty('display', 'none', 'important');
+        });
+
+        /* 4. Ẩn toolbar button chứa SVG logo GitHub (viewBox "0 0 98 96" hoặc octicon 16×16) */
+        doc.querySelectorAll(
+            '[data-testid="stToolbarActions"] button, ' +
+            '[data-testid="stToolbar"] button, ' +
+            'header button'
+        ).forEach(function(btn) {
+            var svg = btn.querySelector('svg');
+            if (!svg) return;
+            var vb = (svg.getAttribute('viewBox') || '').trim();
+            /* GitHub octicon: "0 0 16 16"  |  GitHub logo SVG: "0 0 98 96" */
+            if (vb === '0 0 16 16' || vb === '0 0 98 96') {
+                btn.style.setProperty('display', 'none', 'important');
+            }
+            /* Fallback: kiểm tra path d bắt đầu bằng chuỗi đặc trưng GitHub logo */
+            var paths = svg.querySelectorAll('path');
+            paths.forEach(function(path) {
+                var d = path.getAttribute('d') || '';
+                if (d.startsWith('M8 0C3.58') || d.startsWith('M48.854 0C')) {
+                    btn.style.setProperty('display', 'none', 'important');
+                }
+            });
+        });
+    }
+
+    function run() {
+        try { hide(window.parent.document); } catch(e) {}
+        try { hide(document); } catch(e) {}
+    }
+
+    /* Chạy ngay */
+    run();
+
+    /* MutationObserver để bắt re-render */
+    try {
+        new MutationObserver(run).observe(
+            window.parent.document.body,
+            { childList: true, subtree: true }
+        );
+    } catch(e) {}
+
+    /* Retry phòng ngừa */
+    [200, 600, 1200, 2500, 5000].forEach(function(ms) {
+        setTimeout(run, ms);
+    });
+})();
+</script>
+""", height=0)
+
+

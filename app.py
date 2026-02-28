@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
-from ui.styles import inject_custom_css, inject_tab_navigation
+from ui.styles import inject_custom_css, inject_tab_navigation, inject_hide_github
 from ui.components import render_header, parameter_sidebar
 from ui.tab_recommend import render_recommend_tab
 from ui.tab_batch import render_batch_tab
@@ -94,6 +94,9 @@ inject_custom_css()
 
 # Inject tab navigation arrows
 inject_tab_navigation()
+
+# Ẩn icon GitHub (parent frame)
+inject_hide_github()
 
 # Header
 render_header()
