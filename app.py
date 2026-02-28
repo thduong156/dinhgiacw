@@ -22,20 +22,21 @@ from data.portfolio_manager import load_portfolio, deserialize_cw_entry
 
 
 def _make_bullish_icon():
-    """Tạo favicon bullish đơn sắc: 3 nến tăng dần trên nền trong suốt."""
+    """Tạo favicon bullish xanh lá: 3 nến tăng dần + đường xu hướng xanh."""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
-        return "📈"
+        return "🐂"
 
     SIZE = 64
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Màu đơn sắc xám-trắng
-    C   = (220, 220, 220, 255)   # thân nến
-    CW  = (170, 170, 170, 220)   # bấc nến
-    CA  = (160, 160, 160, 180)   # đường xu hướng
+    # Màu xanh bullish (#2ECC71 palette)
+    C_BODY   = (46,  204, 113, 255)   # #2ECC71 — thân nến xanh
+    C_WICK   = (39,  174,  96, 230)   # #27AE60 — bấc nến xanh đậm hơn
+    C_TREND  = (88,  214, 141, 210)   # #58D68D — đường xu hướng xanh nhạt
+    C_GLOW   = (46,  204, 113,  45)   # hào quang nhẹ xung quanh thân
 
     # 3 nến bullish tăng dần: (x_tâm, y_bấc_trên, y_thân_trên, y_thân_dưới, y_bấc_dưới)
     candles = [
@@ -43,14 +44,19 @@ def _make_bullish_icon():
         (32, 20, 24, 40, 44),   # nến giữa
         (52,  3,  7, 22, 26),   # nến phải  — cao nhất
     ]
-    for x, wt, bt, bb, wb in candles:
-        half = 7
-        d.line([(x, wt), (x, bt)],  fill=CW, width=2)          # bấc trên
-        d.rectangle([x - half, bt, x + half, bb], fill=C)       # thân
-        d.line([(x, bb), (x, wb)],  fill=CW, width=2)           # bấc dưới
+    half = 7
 
-    # Đường xu hướng tăng: dưới-trái → trên-phải
-    d.line([(4, 56), (60, 12)], fill=CA, width=1)
+    for x, wt, bt, bb, wb in candles:
+        # Hào quang mờ (glow) xung quanh thân
+        d.rectangle([x - half - 2, bt - 1, x + half + 2, bb + 1], fill=C_GLOW)
+        # Bấc trên & dưới
+        d.line([(x, wt), (x, bt)], fill=C_WICK, width=2)
+        d.line([(x, bb), (x, wb)], fill=C_WICK, width=2)
+        # Thân nến xanh
+        d.rectangle([x - half, bt, x + half, bb], fill=C_BODY)
+
+    # Đường xu hướng tăng: dưới-trái → trên-phải (nét đôi để rõ hơn)
+    d.line([(3, 57), (61, 11)], fill=C_TREND, width=2)
 
     return img
 
