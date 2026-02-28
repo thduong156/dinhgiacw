@@ -1504,6 +1504,31 @@ def inject_custom_css():
             .batch-stats-grid { grid-template-columns: repeat(2, 1fr); }
             .daily-stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
+
+        /* ===== ẨN CÁC PHẦN TỬ MẶC ĐỊNH CỦA STREAMLIT ===== */
+
+        /* Ẩn nút GitHub (viewer badge) trên Streamlit Cloud */
+        .viewerBadge_container__r5tak,
+        .viewerBadge_link__qRIco,
+        [data-testid="stToolbarActionButtonIcon"] + [data-testid="stToolbarActionButtonTooltip"],
+        .css-1dp5vir { display: none !important; }
+
+        /* Ẩn tất cả link dẫn tới github.com trong thanh công cụ */
+        [data-testid="stToolbar"] a[href*="github"],
+        [data-testid="stHeader"] a[href*="github"],
+        header a[href*="github"] { display: none !important; }
+
+        /* Ẩn nút "Edit source on GitHub" / "View on GitHub" nếu có */
+        a[href*="github.com"][target="_blank"]:not([href*="fonts"]) {
+            display: none !important;
+        }
+
+        /* Ẩn footer mặc định Streamlit "Made with Streamlit" */
+        footer, footer * { visibility: hidden !important; }
+        footer::after  { content: ""; visibility: hidden !important; }
+
+        /* Ẩn menu chính nếu muốn (uncomment để bật) */
+        /* #MainMenu { visibility: hidden !important; } */
     </style>
     """, unsafe_allow_html=True)
 
