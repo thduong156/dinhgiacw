@@ -2363,16 +2363,23 @@ def create_price_forecast_chart(
         ))
 
         # Đường ngăn cách lịch sử | dự phóng
-        sep_str = str(hist_dates.iloc[-1].date())
-        fig.add_vline(
-            x=sep_str,
-            line_dash="dot",
-            line_color="rgba(255,255,255,0.22)",
-            line_width=1,
-            annotation_text="← Lịch Sử | Dự Phóng →",
-            annotation_position="top",
-            annotation_font_size=9,
-            annotation_font_color="rgba(180,180,180,0.7)",
+        # (dùng add_shape + add_annotation thay add_vline để tránh TypeError với datetime axis)
+        sep_val = hist_dates.iloc[-1]
+        fig.add_shape(
+            type="line",
+            x0=sep_val, x1=sep_val,
+            y0=0, y1=1,
+            xref="x", yref="paper",
+            line=dict(dash="dot", color="rgba(255,255,255,0.22)", width=1),
+        )
+        fig.add_annotation(
+            x=sep_val,
+            y=1.01,
+            xref="x", yref="paper",
+            text="← Lịch Sử | Dự Phóng →",
+            showarrow=False,
+            yanchor="bottom",
+            font=dict(size=9, color="rgba(180,180,180,0.7)"),
         )
 
     fig.update_layout(
