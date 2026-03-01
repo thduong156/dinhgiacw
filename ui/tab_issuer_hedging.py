@@ -31,6 +31,7 @@ from data.issuer_hedging_tracker import (
     delete_all_hedge_history,
     compute_hedge_fields,
 )
+from data.daily_tracker import get_latest_record as _get_latest_daily_record
 from core.issuer_hedging import (
     get_compliance_status,
     forecast_hedge_positions,
@@ -736,14 +737,31 @@ def render_issuer_hedging_tab():
         unsafe_allow_html=True,
     )
 
-    # ── Xác định giá trị S và sigma mặc định ─────────────────────────
-    # Ưu tiên: lần nhập trước (last record) → portfolio → 0
-    _hist_now   = load_hedge_history(sel_ma)
-    _prev_recs  = _hist_now.get("records", []) if _hist_now else []
-    _last_rec   = _prev_recs[-1] if _prev_recs else None
+    # ── Reset session state khi đổi CW ──────────────────────────────
+    if st.session_state.get(_k("active_ma")) != sel_ma:
+        st.session_state[_k("active_ma")] = sel_ma
+        for _sk in ("use_S", "use_sigma_pct", "inp_S", "inp_sigma"):
+            st.session_state.pop(_k(_sk), None)
 
-    _default_S         = float(_last_rec.get("S", 0.0))       if _last_rec else 0.0
-    _default_sigma_pct = cw_static.get("sigma", 0.30) * 100.0  # luôn dùng portfolio làm gốc
+    # ── Xác định giá trị S và sigma mặc định ─────────────────────────
+    # Ưu tiên S: (1) lần nhập hedge trước → (2) tab Theo Dõi&Backtest → (3) 0
+    _hist_now  = load_hedge_history(sel_ma)
+    _prev_recs = _hist_now.get("records", []) if _hist_now else []
+    _last_rec  = _prev_recs[-1] if _prev_recs else None
+
+    _hedge_S = float(_last_rec.get("S", 0.0)) if _last_rec else 0.0
+
+    # Fallback: lấy từ lịch sử tab Theo Dõi & Backtest
+    _daily_rec  = _get_latest_daily_record(sel_ma)
+    _daily_S    = float(_daily_rec.get("S", 0.0))    if _daily_rec else 0.0
+    _daily_sig  = float(_daily_rec.get("implied_volatility") or _daily_rec.get("sigma") or 0.0) \
+                  if _daily_rec else 0.0
+
+    _default_S = _hedge_S if _hedge_S > 0 else _daily_S  # ưu tiên hedge, fallback daily tracker
+
+    # sigma: portfolio là gốc; nếu daily tracker có IV mới hơn thì dùng
+    _portfolio_sigma_pct = cw_static.get("sigma", 0.30) * 100.0
+    _default_sigma_pct   = _portfolio_sigma_pct   # giữ portfolio làm mặc định ổn định
 
     # Khởi tạo session state cho S và sigma override
     if _k("use_S") not in st.session_state:
@@ -755,7 +773,14 @@ def render_issuer_hedging_tab():
     _cur_sig_pct = st.session_state[_k("use_sigma_pct")]
 
     # ── Hiển thị giá trị đang dùng ───────────────────────────────────
-    _s_src   = "lần nhập trước" if _last_rec and _default_S > 0 else "chưa có — nhập bên dưới"
+    if _cur_S <= 0:
+        _s_src = "chưa có — nhập bên dưới"
+    elif _hedge_S > 0:
+        _s_src = "lần nhập hedge trước"
+    elif _daily_S > 0:
+        _s_src = "tab Theo Dõi & Backtest"
+    else:
+        _s_src = "chưa có — nhập bên dưới"
     _sig_src = "portfolio"
     _s_color = "#94A3B8" if _cur_S > 0 else "#EF4444"
     st.markdown(
