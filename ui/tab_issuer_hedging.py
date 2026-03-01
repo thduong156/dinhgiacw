@@ -119,6 +119,11 @@ def _parse_num(text: str) -> float:
 # Helper: status badge HTML
 # ─────────────────────────────────────────────────────────────────
 
+# ─── Ngưỡng tuân thủ cố định theo quy định UBCKNN ───────────────
+# Vượt 20% → bị phạt (Điều 20 TT.17/2018); không cần tuỳ chỉnh UI
+_GREEN_THR  = 10.0   # |ΔpT%| ≤ 10% → An toàn
+_YELLOW_THR = 20.0   # 10% < |ΔpT%| ≤ 20% → Cảnh báo; > 20% → Vi phạm
+
 _STATUS_CFG = {
     "safe":    ("🟢", "An Toàn",            "#22C55E", "rgba(34,197,94,0.12)"),
     "warning": ("🟡", "Cảnh Báo",           "#F59E0B", "rgba(245,158,11,0.12)"),
@@ -661,9 +666,11 @@ def render_issuer_hedging_tab():
         'Theo dõi và kiểm soát vị thế phòng ngừa rủi ro của '
         '<b>Tổ Chức Phát Hành (TCPH)</b> theo quy định UBCKNN.<br>'
         '&bull; <b>P_T = |Δ| × OI / k</b> — Số CP lý thuyết TCPH bắt buộc nắm giữ<br>'
-        '&bull; <b>ΔpT% = (P_T − p_T) / P_T × 100</b> — Độ lệch thực tế<br>'
-        '&bull; Cảnh báo 3 mức: 🟢 An toàn &nbsp;|&nbsp; '
-        '🟡 Cảnh báo &nbsp;|&nbsp; 🔴 Cần tái cân bằng ngay'
+        '&bull; <b>ΔpT% = (P_T − p_T) / P_T × 100</b> — Độ lệch thực tế so với vị thế bắt buộc<br>'
+        '&bull; Ngưỡng cố định theo quy định: '
+        '🟢 ΔpT% ≤ 10% &nbsp;|&nbsp; '
+        '🟡 10% < ΔpT% ≤ 20% &nbsp;|&nbsp; '
+        '🔴 ΔpT% > 20% — <b>Vi phạm quy định, bị xử phạt</b>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -708,25 +715,9 @@ def render_issuer_hedging_tab():
         unsafe_allow_html=True,
     )
 
-    # Cấu hình ngưỡng tuân thủ
-    with st.expander("⚙ Cấu Hình Ngưỡng Tuân Thủ", expanded=False):
-        cg, cy = st.columns(2)
-        with cg:
-            green_thr = st.slider(
-                "Ngưỡng An Toàn 🟢 (%)",
-                min_value=1, max_value=30,
-                value=st.session_state.get(_k("green_thr"), 10),
-                key=_k("green_thr"),
-                help="Nếu |ΔpT%| ≤ ngưỡng này → An Toàn (xanh)",
-            )
-        with cy:
-            yellow_thr = st.slider(
-                "Ngưỡng Cảnh Báo 🟡 (%)",
-                min_value=green_thr + 1, max_value=50,
-                value=max(st.session_state.get(_k("yellow_thr"), 20), green_thr + 1),
-                key=_k("yellow_thr"),
-                help="Nếu ngưỡng xanh < |ΔpT%| ≤ ngưỡng này → Cảnh Báo (vàng)",
-            )
+    # Ngưỡng cố định theo quy định — không cần UI tuỳ chỉnh
+    green_thr  = _GREEN_THR
+    yellow_thr = _YELLOW_THR
 
     section_divider(thick=True)
 
