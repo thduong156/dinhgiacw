@@ -1,0 +1,23 @@
+{
+  "ma_cw": "CMWG2604",
+  "K": 85000.0,
+  "cr": 7.0,
+  "option_type": "call",
+  "maturity_date": "26/10/2026",
+  "r": 0.045,
+  "q": 0.0,
+  "records": [
+    {
+      "date": "2026-03-01",
+      "S": 93300.0,
+      "sigma": 0.33,
+      "oi": 3000000,
+      "p_actual": 310000.0,
+      "delta_raw": 0.723331,
+      "p_theo": 309998.8,
+      "deviation_pct": -0.0004,
+      "buy_sell": -1,
+      "status": "safe"
+    }
+  ]
+}

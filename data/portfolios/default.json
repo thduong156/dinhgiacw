@@ -1,13 +1,13 @@
 {
   "portfolio_name": "Default",
-  "last_modified": "2026-02-27T22:52:22.888744",
+  "last_modified": "2026-02-28T15:44:18.177954",
   "cw_list": [
     {
       "ma_cw": "cmwg2604",
       "ma_co_so": "mwg",
       "S": 93100.0,
       "K": 85000.0,
-      "T": 0.6602739726027397,
+      "T": 0.6575342465753424,
       "r": 0.045,
       "sigma": 0.33,
       "q": 0.0,
@@ -15,7 +15,7 @@
       "cw_price": 2230.0,
       "option_type": "call",
       "maturity_date": "26/10/2026",
-      "days_remaining": 241,
+      "days_remaining": 240,
       "issuer": "ACBS",
       "entry_price": 2100.0,
       "quantity": 250000
@@ -25,7 +25,7 @@
       "ma_co_so": "mwg",
       "S": 92800.0,
       "K": 102000.0,
-      "T": 0.863013698630137,
+      "T": 0.8602739726027397,
       "r": 0.045,
       "sigma": 0.35,
       "q": 0.0,
@@ -33,7 +33,7 @@
       "cw_price": 1480.0,
       "option_type": "call",
       "maturity_date": "08/01/2027",
-      "days_remaining": 315,
+      "days_remaining": 314,
       "issuer": "HSC",
       "entry_price": null,
       "quantity": null
@@ -43,7 +43,7 @@
       "ma_co_so": "mwg",
       "S": 92800.0,
       "K": 90000.0,
-      "T": 0.5863013698630137,
+      "T": 0.5835616438356165,
       "r": 0.045,
       "sigma": 0.35,
       "q": 0.0,
@@ -51,7 +51,7 @@
       "cw_price": 3080.0,
       "option_type": "call",
       "maturity_date": "29/09/2026",
-      "days_remaining": 214,
+      "days_remaining": 213,
       "issuer": "SSI",
       "entry_price": null,
       "quantity": null
@@ -61,7 +61,7 @@
       "ma_co_so": "mwg",
       "S": 92800.0,
       "K": 90000.0,
-      "T": 0.33424657534246577,
+      "T": 0.3315068493150685,
       "r": 0.045,
       "sigma": 0.33,
       "q": 0.0,
@@ -69,7 +69,7 @@
       "cw_price": 2290.0,
       "option_type": "call",
       "maturity_date": "29/06/2026",
-      "days_remaining": 122,
+      "days_remaining": 121,
       "issuer": "SSI",
       "entry_price": 2150.0,
       "quantity": 200000
@@ -77,20 +77,20 @@
     {
       "ma_cw": "cmsn2516",
       "ma_co_so": "msn",
-      "S": 80400.0,
+      "S": 79000.0,
       "K": 72000.0,
-      "T": 0.3178082191780822,
+      "T": 0.3150684931506849,
       "r": 0.045,
       "sigma": 0.33,
       "q": 0.0,
       "cr": 4.0,
-      "cw_price": 3800.0,
+      "cw_price": 3750.0,
       "option_type": "call",
       "maturity_date": "23/06/2026",
-      "days_remaining": 116,
+      "days_remaining": 115,
       "issuer": "SSI",
-      "entry_price": null,
-      "quantity": null
+      "entry_price": 3790.0,
+      "quantity": 148800
     }
   ]
 }

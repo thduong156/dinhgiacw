@@ -1,0 +1,47 @@
+{
+  "ma_cw": "CMSN2516",
+  "ma_co_so": "msn",
+  "K": 72000.0,
+  "cr": 4.0,
+  "option_type": "call",
+  "maturity_date": "23/06/2026",
+  "r": 0.045,
+  "records": [
+    {
+      "date": "2026-02-27",
+      "S": 80400.0,
+      "cw_price": 3850.0,
+      "sigma": 0.33,
+      "theoretical_price": 2882.29,
+      "premium_discount_pct": 33.57,
+      "implied_volatility": 0.5903,
+      "delta": 0.194321,
+      "gamma": 4.98e-06,
+      "theta": -6.3768,
+      "effective_leverage": 4.06,
+      "moneyness": "ITM (Trong tiền)",
+      "intrinsic_value": 2100.0,
+      "time_value": 782.29,
+      "break_even": 87400.0,
+      "score": 58
+    },
+    {
+      "date": "2026-02-28",
+      "S": 79000.0,
+      "cw_price": 3750.0,
+      "sigma": 0.33,
+      "theoretical_price": 2608.7,
+      "premium_discount_pct": 43.75,
+      "implied_volatility": 0.6297,
+      "delta": 0.187147,
+      "gamma": 5.45e-06,
+      "theta": -6.5707,
+      "effective_leverage": 3.94,
+      "moneyness": "ITM (Trong tiền)",
+      "intrinsic_value": 1750.0,
+      "time_value": 858.7,
+      "break_even": 87000.0,
+      "score": 55
+    }
+  ]
+}
