@@ -655,128 +655,269 @@ def _render_data_management(ma_cw: str, records: list):
 
 
 # ─────────────────────────────────────────────────────────────────
-# Section 0: Tổng hợp hedge toàn portfolio theo mã cơ sở
+# Section 0: Tổng hợp hedge toàn portfolio
 # ─────────────────────────────────────────────────────────────────
 
 def _render_aggregate_overview(portfolio: list, green_thr: float, yellow_thr: float):
     """
-    Tổng hợp vị thế hedge của TCPH theo từng mã cổ phiếu cơ sở.
-
-    Logic:
-        P_T_tổng = Σ P_T_i  (tổng vị thế lý thuyết của tất cả CW trên cùng 1 CS)
-        p_T_tổng = Σ p_T_i  (tổng CP TCPH đang nắm giữ)
-        ΔpT%_tổng = (P_T_tổng − p_T_tổng) / P_T_tổng × 100
-
-    Cho phép bù trừ giữa các CW: CW thừa hedge có thể bù cho CW thiếu.
+    Tổng hợp vị thế hedge toàn portfolio — hai góc nhìn song song:
+      A. Theo TCPH (issuer): SSI, ACBS, VPS … → tổng P_T, p_T, Mua/Bán ròng
+      B. Theo Mã Cơ Sở: MWG, HPG … → tổng P_T, p_T, Mua/Bán ròng
+    Kèm Ma Trận TCPH × Mã CS (Mua/Bán Ròng) để thấy áp lực mua/bán chéo.
     """
-    section_title("◈", "Tổng Hợp Hedge Theo Mã Cơ Sở")
+    section_title("◈", "Tổng Hợp Hedge Toàn Portfolio")
 
     st.markdown(
         '<div class="info-box">'
-        'Tổng hợp toàn bộ CW của TCPH theo mã cổ phiếu cơ sở.<br>'
-        '&bull; <b>P_T Tổng = Σ P_T_i</b> — Tổng vị thế lý thuyết bắt buộc<br>'
-        '&bull; <b>p_T Tổng = Σ p_T_i</b> — Tổng CP đang thực sự nắm giữ<br>'
-        '&bull; Bù trừ nội bộ: CW thừa hedge có thể bù cho CW thiếu hedge trên cùng một CS'
+        'Bức tranh toàn cảnh vị thế phòng ngừa rủi ro của toàn bộ TCPH.<br>'
+        '&bull; <b>Theo TCPH</b>: mỗi tổ chức phát hành tổng hợp tất cả CW họ đang phát hành<br>'
+        '&bull; <b>Ma Trận TCPH × Mã CS</b>: số CP cần mua/bán ròng của từng TCPH cho từng CS<br>'
+        '&bull; <b>Theo Mã CS</b>: áp lực mua/bán tổng hợp của toàn thị trường trên từng cổ phiếu'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # ── Gom nhóm CW theo mã cơ sở ───────────────────────────────────
+    if not portfolio:
+        st.caption("Chưa có CW trong portfolio.")
+        return
+
+    # ── Thu thập dữ liệu hedge mới nhất cho mọi CW (1 lần duy nhất) ──
+    # Cấu trúc: records[ma_cw] = {pt, pa, oi, dr, dt, cs, tcph}
+    _icon = {"safe": "🟢", "warning": "🟡", "danger": "🔴", "error": "⚠"}
+
+    cw_records = {}
+    all_tcph   = set()
+    all_cs     = set()
+
+    for cw in portfolio:
+        ma   = cw.get("ma_cw", "").upper()
+        cs   = cw.get("ma_co_so", "N/A").upper()
+        tcph = (cw.get("issuer") or "—").strip() or "—"
+        hist = load_hedge_history(ma)
+        last = hist["records"][-1] if (hist and hist.get("records")) else None
+
+        all_tcph.add(tcph)
+        all_cs.add(cs)
+
+        if last and last.get("p_theo") is not None and last.get("p_actual") is not None:
+            cw_records[ma] = {
+                "pt": float(last["p_theo"]),
+                "pa": float(last["p_actual"]),
+                "oi": int(last.get("oi", 0)),
+                "dr": last.get("delta_raw"),
+                "dt": last.get("date", ""),
+                "dev": last.get("deviation_pct"),
+                "cs": cs, "tcph": tcph, "ma": ma,
+            }
+        else:
+            cw_records[ma] = {
+                "pt": None, "pa": None, "oi": 0,
+                "dr": None, "dt": "", "dev": None,
+                "cs": cs, "tcph": tcph, "ma": ma,
+            }
+
+    all_tcph_s = sorted(all_tcph)
+    all_cs_s   = sorted(all_cs)
+
+    # ══════════════════════════════════════════════════════════════
+    # A. TỔNG HỢP THEO TCPH
+    # ══════════════════════════════════════════════════════════════
+    section_divider()
+    st.markdown(
+        '<b style="color:#F1F5F9;font-size:0.95rem;">A — Tổng Hợp Theo TCPH</b>',
+        unsafe_allow_html=True,
+    )
+
+    # Gom nhóm theo TCPH
+    by_tcph: dict = {}
+    for cw in portfolio:
+        tcph = (cw.get("issuer") or "—").strip() or "—"
+        by_tcph.setdefault(tcph, []).append(cw.get("ma_cw", "").upper())
+
+    tcph_rows = []
+    for tcph in all_tcph_s:
+        mas      = by_tcph.get(tcph, [])
+        P_T_tot  = p_T_tot = 0.0
+        OI_tot   = 0
+        n_ok     = 0
+        for ma in mas:
+            r = cw_records.get(ma)
+            if r and r["pt"] is not None:
+                P_T_tot += r["pt"]
+                p_T_tot += r["pa"]
+                OI_tot  += r["oi"]
+                n_ok    += 1
+
+        if n_ok == 0:
+            dev_a = bs_a = None; st_a = "error"
+        else:
+            dev_a = (P_T_tot - p_T_tot) / P_T_tot * 100 if P_T_tot > 0 else 0.0
+            bs_a  = round(P_T_tot - p_T_tot)
+            st_a  = get_compliance_status(dev_a, green_thr, yellow_thr)
+
+        tcph_rows.append({
+            "TCPH":            tcph,
+            "Số CW":           f"{len(mas)} ({n_ok} có data)",
+            "OI Tổng":         f"{OI_tot:,}"       if n_ok else "N/A",
+            "P_T Tổng (CP)":   f"{P_T_tot:,.0f}"   if n_ok else "N/A",
+            "p_T Tổng (CP)":   f"{p_T_tot:,.0f}"   if n_ok else "N/A",
+            "ΔpT% Tổng":       f"{dev_a:+.2f}%"    if dev_a is not None else "N/A",
+            "Mua/Bán Ròng":    f"{bs_a:+,} CP"      if bs_a is not None else "N/A",
+            "Trạng Thái":      _icon.get(st_a, "⚠"),
+        })
+
+    table_container("Tổng Hợp Theo TCPH", badge=f"{len(all_tcph_s)} TCPH")
+    render_table(pd.DataFrame(tcph_rows))
+    table_container_end()
+
+    # ══════════════════════════════════════════════════════════════
+    # B. MA TRẬN TCPH × MÃ CS  (Mua/Bán Ròng CP)
+    # ══════════════════════════════════════════════════════════════
+    section_divider()
+    st.markdown(
+        '<b style="color:#F1F5F9;font-size:0.95rem;">'
+        'B — Ma Trận TCPH × Mã CS &nbsp;<span style="color:#8896AB;font-size:0.78rem;">'
+        '(Mua/Bán Ròng CP — dương = cần mua, âm = cần bán)</span></b>',
+        unsafe_allow_html=True,
+    )
+
+    matrix_rows = []
+    for tcph in all_tcph_s:
+        row = {"TCPH": tcph}
+        grand_total = 0
+        for cs in all_cs_s:
+            cs_bs = 0
+            has_data = False
+            for ma, r in cw_records.items():
+                if r["tcph"] == tcph and r["cs"] == cs and r["pt"] is not None:
+                    cs_bs    += round(r["pt"] - r["pa"])
+                    has_data  = True
+            if has_data:
+                row[cs]     = f"{cs_bs:+,}"
+                grand_total += cs_bs
+            else:
+                row[cs] = "—"
+        row["⊕ Tổng Ròng"] = f"{grand_total:+,}" if any(
+            row.get(cs) != "—" for cs in all_cs_s
+        ) else "N/A"
+        matrix_rows.append(row)
+
+    if matrix_rows:
+        # Dòng tổng theo cột (Toàn thị trường / từng CS)
+        total_row = {"TCPH": "📊 Toàn TT"}
+        grand_all = 0
+        for cs in all_cs_s:
+            cs_total = 0
+            has_any  = False
+            for ma, r in cw_records.items():
+                if r["cs"] == cs and r["pt"] is not None:
+                    cs_total += round(r["pt"] - r["pa"])
+                    has_any   = True
+            total_row[cs] = f"{cs_total:+,}" if has_any else "—"
+            if has_any:
+                grand_all += cs_total
+        total_row["⊕ Tổng Ròng"] = f"{grand_all:+,}"
+        matrix_rows.append(total_row)
+
+        table_container(
+            "Ma Trận Mua/Bán Ròng (CP)",
+            badge=f"{len(all_tcph_s)} TCPH × {len(all_cs_s)} Mã CS",
+        )
+        render_table(pd.DataFrame(matrix_rows))
+        table_container_end()
+        st.caption(
+            "Mỗi ô = Σ(P_T − p_T) của TCPH đó với tất cả CW trên mã CS đó. "
+            "Dương (+) = TCPH cần mua thêm CP. Âm (−) = TCPH đang thừa có thể bán. "
+            "Hàng 📊 = tổng áp lực mua/bán toàn thị trường trên từng mã CS."
+        )
+
+    # ══════════════════════════════════════════════════════════════
+    # C. TỔNG HỢP THEO MÃ CƠ SỞ
+    # ══════════════════════════════════════════════════════════════
+    section_divider()
+    st.markdown(
+        '<b style="color:#F1F5F9;font-size:0.95rem;">C — Tổng Hợp Theo Mã Cơ Sở</b>',
+        unsafe_allow_html=True,
+    )
+
+    # Gom nhóm theo mã CS
     by_cs: dict = {}
     for cw in portfolio:
         cs = cw.get("ma_co_so", "N/A").upper()
         by_cs.setdefault(cs, []).append(cw)
 
-    if not by_cs:
-        st.caption("Chưa có CW trong portfolio.")
-        return
+    cs_rows      = []
+    detail_by_cs = {}
 
-    summary_rows = []
-    detail_by_cs = {}   # lưu chi tiết từng CW để hiện expander
-
-    for cs, cws in sorted(by_cs.items()):
-        P_T_total = 0.0
-        p_T_total = 0.0
-        OI_total  = 0
-        n_hedged  = 0
-        cw_details = []
+    for cs in all_cs_s:
+        cws      = by_cs.get(cs, [])
+        P_T_tot  = p_T_tot = 0.0
+        OI_tot   = 0
+        n_ok     = 0
+        cw_det   = []
 
         for cw in cws:
             ma  = cw.get("ma_cw", "").upper()
-            hist = load_hedge_history(ma)
-            last = hist["records"][-1] if (hist and hist.get("records")) else None
+            r   = cw_records.get(ma, {})
+            tcph_tag = (cw.get("issuer") or "—").strip() or "—"
 
-            if last:
-                pt = last.get("p_theo")
-                pa = last.get("p_actual")
-                oi = last.get("oi", 0)
-                dr = last.get("delta_raw")
-                dt = last.get("date", "")
-                if pt is not None and pa is not None:
-                    P_T_total += pt
-                    p_T_total += pa
-                    OI_total  += oi
-                    n_hedged  += 1
-                cw_details.append({
-                    "Mã CW":     ma,
-                    "Ngày":      datetime.strptime(dt, "%Y-%m-%d").strftime("%d/%m/%Y") if dt else "N/A",
-                    "OI":        f"{oi:,}",
-                    "Δ raw":     f"{dr:.4f}" if dr is not None else "N/A",
-                    "P_T (CP)":  f"{pt:,.0f}" if pt is not None else "N/A",
-                    "p_T (CP)":  f"{pa:,.0f}" if pa is not None else "N/A",
-                    "ΔpT%":      f"{last.get('deviation_pct', 0):+.2f}%"
-                                 if last.get("deviation_pct") is not None else "N/A",
+            if r.get("pt") is not None:
+                P_T_tot += r["pt"]; p_T_tot += r["pa"]
+                OI_tot  += r["oi"]; n_ok    += 1
+                dt_str   = datetime.strptime(r["dt"], "%Y-%m-%d").strftime("%d/%m/%Y") \
+                           if r.get("dt") else "N/A"
+                cw_det.append({
+                    "Mã CW":    ma,
+                    "TCPH":     tcph_tag,
+                    "Ngày":     dt_str,
+                    "OI":       f"{r['oi']:,}",
+                    "Δ raw":    f"{r['dr']:.4f}" if r.get("dr") is not None else "N/A",
+                    "P_T (CP)": f"{r['pt']:,.0f}",
+                    "p_T (CP)": f"{r['pa']:,.0f}",
+                    "ΔpT%":     f"{r['dev']:+.2f}%" if r.get("dev") is not None else "N/A",
+                    "Mua/Bán":  f"{round(r['pt']-r['pa']):+,}",
                 })
             else:
-                cw_details.append({
-                    "Mã CW": ma, "Ngày": "—", "OI": "—",
-                    "Δ raw": "—", "P_T (CP)": "—", "p_T (CP)": "—", "ΔpT%": "—",
+                cw_det.append({
+                    "Mã CW": ma, "TCPH": tcph_tag, "Ngày": "—", "OI": "—",
+                    "Δ raw": "—", "P_T (CP)": "—", "p_T (CP)": "—",
+                    "ΔpT%": "—", "Mua/Bán": "—",
                 })
 
-        detail_by_cs[cs] = cw_details
+        detail_by_cs[cs] = cw_det
 
-        if n_hedged == 0:
-            status_agg = "error"
-            dev_agg    = None
-            bs_agg     = None
+        if n_ok == 0:
+            dev_c = bs_c = None; st_c = "error"
         else:
-            dev_agg    = (P_T_total - p_T_total) / P_T_total * 100 \
-                         if P_T_total > 0 else 0.0
-            bs_agg     = round(P_T_total - p_T_total)
-            status_agg = get_compliance_status(dev_agg, green_thr, yellow_thr)
+            dev_c = (P_T_tot - p_T_tot) / P_T_tot * 100 if P_T_tot > 0 else 0.0
+            bs_c  = round(P_T_tot - p_T_tot)
+            st_c  = get_compliance_status(dev_c, green_thr, yellow_thr)
 
-        icon = {"safe": "🟢", "warning": "🟡", "danger": "🔴", "error": "⚠"}.get(
-            status_agg, "⚠"
-        )
-        bs_str = f"{bs_agg:+,} CP" if bs_agg is not None else "N/A"
-
-        summary_rows.append({
-            "Mã CS":            cs,
-            "Số CW":            f"{len(cws)}  ({n_hedged} có data)",
-            "OI Tổng":          f"{OI_total:,}" if n_hedged > 0 else "N/A",
-            "P_T Tổng (CP)":    f"{P_T_total:,.0f}" if n_hedged > 0 else "N/A",
-            "p_T Tổng (CP)":    f"{p_T_total:,.0f}" if n_hedged > 0 else "N/A",
-            "ΔpT% Tổng":        f"{dev_agg:+.2f}%" if dev_agg is not None else "N/A",
-            "Mua/Bán Ròng":     bs_str,
-            "Trạng Thái":       f"{icon}",
+        cs_rows.append({
+            "Mã CS":          cs,
+            "Số CW":          f"{len(cws)} ({n_ok} có data)",
+            "OI Tổng":        f"{OI_tot:,}"     if n_ok else "N/A",
+            "P_T Tổng (CP)":  f"{P_T_tot:,.0f}" if n_ok else "N/A",
+            "p_T Tổng (CP)":  f"{p_T_tot:,.0f}" if n_ok else "N/A",
+            "ΔpT% Tổng":      f"{dev_c:+.2f}%"  if dev_c is not None else "N/A",
+            "Mua/Bán Ròng":   f"{bs_c:+,} CP"   if bs_c is not None else "N/A",
+            "Trạng Thái":     _icon.get(st_c, "⚠"),
         })
 
-    # ── Bảng tổng hợp ───────────────────────────────────────────────
-    table_container("Tổng Hợp Theo Mã Cơ Sở", badge=f"{len(by_cs)} mã CS")
-    render_table(pd.DataFrame(summary_rows))
+    table_container("Tổng Hợp Theo Mã Cơ Sở", badge=f"{len(all_cs_s)} mã CS")
+    render_table(pd.DataFrame(cs_rows))
     table_container_end()
-
     st.caption(
-        "ΔpT% Tổng = (Σ P_T − Σ p_T) / Σ P_T × 100 · "
-        "Mua/Bán Ròng = Σ P_T − Σ p_T (dương = cần mua thêm, âm = có thể bán bớt). "
-        "Số liệu lấy từ record mới nhất của mỗi CW."
+        "ΔpT% Tổng = (Σ P_T − Σ p_T) / Σ P_T × 100. "
+        "Số liệu từ record mới nhất của mỗi CW."
     )
 
-    # ── Chi tiết từng CW (expander per mã CS) ───────────────────────
-    st.markdown("**Chi Tiết Từng CW Theo Mã Cơ Sở**")
-    for cs, detail_rows in sorted(detail_by_cs.items()):
-        with st.expander(f"▸ {cs} — {len(detail_rows)} CW", expanded=False):
-            render_table(pd.DataFrame(detail_rows))
+    # Chi tiết từng CW theo CS (có thêm cột TCPH)
+    st.markdown("**Chi Tiết Từng CW**")
+    for cs in all_cs_s:
+        rows_for_cs = detail_by_cs.get(cs, [])
+        with st.expander(f"▸ {cs} — {len(rows_for_cs)} CW", expanded=False):
+            render_table(pd.DataFrame(rows_for_cs))
 
 
 # ─────────────────────────────────────────────────────────────────
