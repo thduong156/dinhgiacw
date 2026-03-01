@@ -655,6 +655,131 @@ def _render_data_management(ma_cw: str, records: list):
 
 
 # ─────────────────────────────────────────────────────────────────
+# Section 0: Tổng hợp hedge toàn portfolio theo mã cơ sở
+# ─────────────────────────────────────────────────────────────────
+
+def _render_aggregate_overview(portfolio: list, green_thr: float, yellow_thr: float):
+    """
+    Tổng hợp vị thế hedge của TCPH theo từng mã cổ phiếu cơ sở.
+
+    Logic:
+        P_T_tổng = Σ P_T_i  (tổng vị thế lý thuyết của tất cả CW trên cùng 1 CS)
+        p_T_tổng = Σ p_T_i  (tổng CP TCPH đang nắm giữ)
+        ΔpT%_tổng = (P_T_tổng − p_T_tổng) / P_T_tổng × 100
+
+    Cho phép bù trừ giữa các CW: CW thừa hedge có thể bù cho CW thiếu.
+    """
+    section_title("◈", "Tổng Hợp Hedge Theo Mã Cơ Sở")
+
+    st.markdown(
+        '<div class="info-box">'
+        'Tổng hợp toàn bộ CW của TCPH theo mã cổ phiếu cơ sở.<br>'
+        '&bull; <b>P_T Tổng = Σ P_T_i</b> — Tổng vị thế lý thuyết bắt buộc<br>'
+        '&bull; <b>p_T Tổng = Σ p_T_i</b> — Tổng CP đang thực sự nắm giữ<br>'
+        '&bull; Bù trừ nội bộ: CW thừa hedge có thể bù cho CW thiếu hedge trên cùng một CS'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Gom nhóm CW theo mã cơ sở ───────────────────────────────────
+    by_cs: dict = {}
+    for cw in portfolio:
+        cs = cw.get("ma_co_so", "N/A").upper()
+        by_cs.setdefault(cs, []).append(cw)
+
+    if not by_cs:
+        st.caption("Chưa có CW trong portfolio.")
+        return
+
+    summary_rows = []
+    detail_by_cs = {}   # lưu chi tiết từng CW để hiện expander
+
+    for cs, cws in sorted(by_cs.items()):
+        P_T_total = 0.0
+        p_T_total = 0.0
+        OI_total  = 0
+        n_hedged  = 0
+        cw_details = []
+
+        for cw in cws:
+            ma  = cw.get("ma_cw", "").upper()
+            hist = load_hedge_history(ma)
+            last = hist["records"][-1] if (hist and hist.get("records")) else None
+
+            if last:
+                pt = last.get("p_theo")
+                pa = last.get("p_actual")
+                oi = last.get("oi", 0)
+                dr = last.get("delta_raw")
+                dt = last.get("date", "")
+                if pt is not None and pa is not None:
+                    P_T_total += pt
+                    p_T_total += pa
+                    OI_total  += oi
+                    n_hedged  += 1
+                cw_details.append({
+                    "Mã CW":     ma,
+                    "Ngày":      datetime.strptime(dt, "%Y-%m-%d").strftime("%d/%m/%Y") if dt else "N/A",
+                    "OI":        f"{oi:,}",
+                    "Δ raw":     f"{dr:.4f}" if dr is not None else "N/A",
+                    "P_T (CP)":  f"{pt:,.0f}" if pt is not None else "N/A",
+                    "p_T (CP)":  f"{pa:,.0f}" if pa is not None else "N/A",
+                    "ΔpT%":      f"{last.get('deviation_pct', 0):+.2f}%"
+                                 if last.get("deviation_pct") is not None else "N/A",
+                })
+            else:
+                cw_details.append({
+                    "Mã CW": ma, "Ngày": "—", "OI": "—",
+                    "Δ raw": "—", "P_T (CP)": "—", "p_T (CP)": "—", "ΔpT%": "—",
+                })
+
+        detail_by_cs[cs] = cw_details
+
+        if n_hedged == 0:
+            status_agg = "error"
+            dev_agg    = None
+            bs_agg     = None
+        else:
+            dev_agg    = (P_T_total - p_T_total) / P_T_total * 100 \
+                         if P_T_total > 0 else 0.0
+            bs_agg     = round(P_T_total - p_T_total)
+            status_agg = get_compliance_status(dev_agg, green_thr, yellow_thr)
+
+        icon = {"safe": "🟢", "warning": "🟡", "danger": "🔴", "error": "⚠"}.get(
+            status_agg, "⚠"
+        )
+        bs_str = f"{bs_agg:+,} CP" if bs_agg is not None else "N/A"
+
+        summary_rows.append({
+            "Mã CS":            cs,
+            "Số CW":            f"{len(cws)}  ({n_hedged} có data)",
+            "OI Tổng":          f"{OI_total:,}" if n_hedged > 0 else "N/A",
+            "P_T Tổng (CP)":    f"{P_T_total:,.0f}" if n_hedged > 0 else "N/A",
+            "p_T Tổng (CP)":    f"{p_T_total:,.0f}" if n_hedged > 0 else "N/A",
+            "ΔpT% Tổng":        f"{dev_agg:+.2f}%" if dev_agg is not None else "N/A",
+            "Mua/Bán Ròng":     bs_str,
+            "Trạng Thái":       f"{icon}",
+        })
+
+    # ── Bảng tổng hợp ───────────────────────────────────────────────
+    table_container("Tổng Hợp Theo Mã Cơ Sở", badge=f"{len(by_cs)} mã CS")
+    render_table(pd.DataFrame(summary_rows))
+    table_container_end()
+
+    st.caption(
+        "ΔpT% Tổng = (Σ P_T − Σ p_T) / Σ P_T × 100 · "
+        "Mua/Bán Ròng = Σ P_T − Σ p_T (dương = cần mua thêm, âm = có thể bán bớt). "
+        "Số liệu lấy từ record mới nhất của mỗi CW."
+    )
+
+    # ── Chi tiết từng CW (expander per mã CS) ───────────────────────
+    st.markdown("**Chi Tiết Từng CW Theo Mã Cơ Sở**")
+    for cs, detail_rows in sorted(detail_by_cs.items()):
+        with st.expander(f"▸ {cs} — {len(detail_rows)} CW", expanded=False):
+            render_table(pd.DataFrame(detail_rows))
+
+
+# ─────────────────────────────────────────────────────────────────
 # Main render
 # ─────────────────────────────────────────────────────────────────
 
@@ -675,6 +800,14 @@ def render_issuer_hedging_tab():
         '</div>',
         unsafe_allow_html=True,
     )
+
+    # ════════════════════════════════════════════════════════
+    # SECTION 0: TỔNG HỢP HEDGE THEO MÃ CƠ SỞ
+    # ════════════════════════════════════════════════════════
+    _portfolio = st.session_state.get("cw_portfolio", [])
+    if _portfolio:
+        _render_aggregate_overview(_portfolio, _GREEN_THR, _YELLOW_THR)
+        section_divider(thick=True)
 
     # ════════════════════════════════════════════════════════
     # SECTION 1: CW SELECTOR + CẤU HÌNH
