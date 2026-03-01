@@ -142,10 +142,16 @@ def _badge(status: str) -> str:
 
 def _handle_form_submit(
     ma_cw, cw_static,
-    date_raw, S_str, sigma_str, oi_str, p_actual_str,
+    date_raw, oi_str, p_actual_str,
+    use_S: float, use_sigma_pct: float,
     green_thr, yellow_thr,
 ):
-    """Parse, validate, compute, save và hiển thị kết quả form submit."""
+    """Parse, validate, compute, save và hiển thị kết quả form submit.
+
+    Args:
+        use_S        : Giá cổ phiếu cơ sở (float, từ lần nhập trước / override).
+        use_sigma_pct: Biến động % (VD: 35.0), đã là số thực.
+    """
     # Parse date (nhiều format)
     input_date = None
     for fmt in ("%d/%m/%y", "%d/%m/%Y", "%d-%m-%y", "%d-%m-%Y", "%Y-%m-%d"):
@@ -155,8 +161,6 @@ def _handle_form_submit(
         except ValueError:
             continue
 
-    S        = _parse_num(S_str)
-    sig_pct  = _parse_num(sigma_str)
     oi       = int(_parse_num(oi_str))
     p_actual = _parse_num(p_actual_str)
 
@@ -164,9 +168,9 @@ def _handle_form_submit(
     errors = []
     if input_date is None:
         errors.append("Định dạng ngày không hợp lệ — dùng DD/MM/YY")
-    if S <= 0:
-        errors.append("Giá cơ sở S phải > 0")
-    if sig_pct <= 0:
+    if use_S <= 0:
+        errors.append("Giá cơ sở S chưa được thiết lập — vui lòng nhập S ở ô bên dưới")
+    if use_sigma_pct <= 0:
         errors.append("Biến động σ phải > 0")
     if oi <= 0:
         errors.append("OI (số CW lưu hành) phải > 0")
@@ -177,8 +181,8 @@ def _handle_form_submit(
 
     record_input = {
         "date":     input_date.strftime("%Y-%m-%d"),
-        "S":        S,
-        "sigma":    sig_pct / 100.0,
+        "S":        use_S,
+        "sigma":    use_sigma_pct / 100.0,
         "oi":       oi,
         "p_actual": p_actual,
     }
@@ -215,11 +219,17 @@ def _handle_form_submit(
     st.markdown(_badge(status), unsafe_allow_html=True)
 
 
-def _render_csv_upload(ma_cw, cw_static, green_thr, yellow_thr):
-    """Bulk import dữ liệu từ CSV."""
+def _render_csv_upload(ma_cw, cw_static, green_thr, yellow_thr,
+                       fallback_S: float = 0.0, fallback_sigma_pct: float = 30.0):
+    """Bulk import dữ liệu từ CSV.
+
+    Cột bắt buộc: date, oi, p_actual.
+    Cột tùy chọn: S, sigma_pct — nếu thiếu sẽ dùng giá trị fallback.
+    """
     st.markdown(
         '<div class="info-box">'
-        'Cột bắt buộc: <b>date, oi, p_actual, S, sigma_pct</b><br>'
+        'Cột bắt buộc: <b>date, oi, p_actual</b><br>'
+        'Cột tùy chọn: <b>S, sigma_pct</b> — nếu không có sẽ dùng giá CS và σ hiện tại.<br>'
         'Định dạng ngày: <b>DD/MM/YYYY</b> hoặc <b>YYYY-MM-DD</b>. '
         'sigma_pct tính theo % (VD: 35.0 = 35%). '
         'sigma_pct &lt; 1 được tự động nhân 100 (decimal format).'
@@ -241,10 +251,10 @@ def _render_csv_upload(ma_cw, cw_static, green_thr, yellow_thr):
         st.error(f"Lỗi đọc CSV: {e}")
         return
 
-    required = ["date", "oi", "p_actual", "S", "sigma_pct"]
+    required = ["date", "oi", "p_actual"]
     missing  = [c for c in required if c not in df_csv.columns]
     if missing:
-        st.error(f"Thiếu cột: {', '.join(missing)}")
+        st.error(f"Thiếu cột bắt buộc: {', '.join(missing)}")
         return
 
     ok_cnt = err_cnt = 0
@@ -262,13 +272,27 @@ def _render_csv_upload(ma_cw, cw_static, green_thr, yellow_thr):
                 err_cnt += 1
                 continue
 
-            sig = float(row["sigma_pct"])
-            if sig > 1:
-                sig = sig / 100.0   # normalize %→decimal
+            # S: từ CSV nếu có, không thì dùng fallback
+            if "S" in df_csv.columns and not pd.isna(row.get("S", None)):
+                row_S = float(row["S"])
+            else:
+                row_S = fallback_S
+
+            # sigma: từ CSV nếu có, không thì dùng fallback (%)
+            if "sigma_pct" in df_csv.columns and not pd.isna(row.get("sigma_pct", None)):
+                sig = float(row["sigma_pct"])
+                if sig > 1:
+                    sig = sig / 100.0   # normalize %→decimal
+            else:
+                sig = fallback_sigma_pct / 100.0
+
+            if row_S <= 0 or sig <= 0:
+                err_cnt += 1
+                continue
 
             rec_in = {
                 "date":     parsed.strftime("%Y-%m-%d"),
-                "S":        float(row["S"]),
+                "S":        row_S,
                 "sigma":    sig,
                 "oi":       int(float(row["oi"])),
                 "p_actual": float(row["p_actual"]),
@@ -285,7 +309,7 @@ def _render_csv_upload(ma_cw, cw_static, green_thr, yellow_thr):
 
     result = f"✓ Import: **{ok_cnt}** records thành công"
     if err_cnt:
-        result += f", **{err_cnt}** lỗi"
+        result += f", **{err_cnt}** lỗi (kiểm tra S > 0 và ngày hợp lệ)"
     st.success(result)
     if ok_cnt:
         st.rerun()
@@ -715,44 +739,110 @@ def render_issuer_hedging_tab():
         '<div class="info-box">'
         '&bull; <b>OI</b>: Số lượng CW đang lưu hành tại ngày đó (tra trên HoSE/HNX)<br>'
         '&bull; <b>p_T</b>: Số CP cơ sở TCPH đang thực sự nắm giữ (báo cáo nội bộ/công bố)<br>'
-        '&bull; App tự tính P_T, ΔpT%, tín hiệu mua/bán và lưu lịch sử'
+        '&bull; App tự động dùng <b>Giá CS (S)</b> và <b>σ</b> từ lần nhập trước (hoặc portfolio) '
+        'để tính Delta và P_T — cập nhật trong ô bên dưới nếu có thay đổi'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    default_sigma_pct = cw_static.get("sigma", 0.30) * 100.0
+    # ── Xác định giá trị S và sigma mặc định ─────────────────────────
+    # Ưu tiên: lần nhập trước (last record) → portfolio → 0
+    _hist_now   = load_hedge_history(sel_ma)
+    _prev_recs  = _hist_now.get("records", []) if _hist_now else []
+    _last_rec   = _prev_recs[-1] if _prev_recs else None
 
+    _default_S         = float(_last_rec.get("S", 0.0))       if _last_rec else 0.0
+    _default_sigma_pct = cw_static.get("sigma", 0.30) * 100.0  # luôn dùng portfolio làm gốc
+
+    # Khởi tạo session state cho S và sigma override
+    if _k("use_S") not in st.session_state:
+        st.session_state[_k("use_S")] = _default_S
+    if _k("use_sigma_pct") not in st.session_state:
+        st.session_state[_k("use_sigma_pct")] = _default_sigma_pct
+
+    _cur_S       = st.session_state[_k("use_S")]
+    _cur_sig_pct = st.session_state[_k("use_sigma_pct")]
+
+    # ── Hiển thị giá trị đang dùng ───────────────────────────────────
+    _s_src   = "lần nhập trước" if _last_rec and _default_S > 0 else "chưa có — nhập bên dưới"
+    _sig_src = "portfolio"
+    _s_color = "#94A3B8" if _cur_S > 0 else "#EF4444"
+    st.markdown(
+        f'<div style="font-size:0.78rem;color:#94A3B8;margin-bottom:6px;">'
+        f'Đang dùng: '
+        f'<b style="color:{_s_color};">S = {_cur_S:,.0f} đ</b> ({_s_src}) &nbsp;|&nbsp; '
+        f'<b style="color:#94A3B8;">σ = {_cur_sig_pct:.1f}%</b> ({_sig_src})'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Expander cập nhật S và sigma ─────────────────────────────────
+    with st.expander("✏ Cập Nhật Giá CS (S) & Biến Động (σ) nếu thay đổi", expanded=(_cur_S <= 0)):
+        ov1, ov2, ov3 = st.columns([2, 2, 1])
+        with ov1:
+            _new_S = st.number_input(
+                "Giá CS hiện tại (S)",
+                value=max(float(_cur_S), 0.0),
+                min_value=0.0, step=1_000.0, format="%.0f",
+                help="Giá thị trường cổ phiếu cơ sở hôm nay — VD: 100,000",
+                key=_k("inp_S"),
+            )
+        with ov2:
+            _new_sig = st.number_input(
+                "Biến động σ (%)",
+                value=max(float(_cur_sig_pct), 0.1),
+                min_value=0.1, max_value=300.0, step=0.5,
+                help="Biến động ngầm định — VD: 35.0 = 35%",
+                key=_k("inp_sigma"),
+            )
+        with ov3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Lưu", key=_k("ov_update"), use_container_width=True):
+                st.session_state[_k("use_S")]        = _new_S
+                st.session_state[_k("use_sigma_pct")] = _new_sig
+                st.rerun()
+
+    # ── Form chính: chỉ nhập OI và p_T ──────────────────────────────
     with st.form(key=_k("daily_form"), clear_on_submit=False):
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3 = st.columns(3)
         with c1:
-            f_date  = st.text_input("⊡ Ngày", value=date.today().strftime("%d/%m/%y"),
-                                    help="DD/MM/YY — VD: 01/03/26")
+            f_date = st.text_input(
+                "⊡ Ngày",
+                value=date.today().strftime("%d/%m/%y"),
+                help="DD/MM/YY — VD: 01/03/26",
+            )
         with c2:
-            f_S     = st.text_input("◆ Giá CS (S)", value="0",
-                                    help="Giá cổ phiếu cơ sở — VD: 100,000")
+            f_oi = st.text_input(
+                "OI (số CW lưu hành)",
+                value="0",
+                help="Số CW đang lưu hành tại ngày này — VD: 1,000,000",
+            )
         with c3:
-            f_sigma = st.text_input("σ (%)", value=f"{default_sigma_pct:.1f}",
-                                    help="Biến động — VD: 35.0")
-        with c4:
-            f_oi    = st.text_input("OI (số CW LH)", value="0",
-                                    help="Số CW đang lưu hành — VD: 1,000,000")
-        with c5:
-            f_pact  = st.text_input("p_T (CP nắm giữ)", value="0",
-                                    help="Số CP TCPH đang thực sự nắm giữ — VD: 500,000")
+            f_pact = st.text_input(
+                "p_T (CP TCPH đang nắm giữ)",
+                value="0",
+                help="Số CP cơ sở TCPH thực sự đang nắm giữ — VD: 500,000",
+            )
 
         submitted = st.form_submit_button("▪ Tính & Lưu", use_container_width=True, type="primary")
 
     if submitted:
         _handle_form_submit(
             sel_ma, cw_static,
-            f_date, f_S, f_sigma, f_oi, f_pact,
+            f_date, f_oi, f_pact,
+            st.session_state.get(_k("use_S"),        _default_S),
+            st.session_state.get(_k("use_sigma_pct"), _default_sigma_pct),
             green_thr, yellow_thr,
         )
 
     # CSV bulk import
     section_divider()
     with st.expander("↑ Nhập Hàng Loạt (Upload CSV)", expanded=False):
-        _render_csv_upload(sel_ma, cw_static, green_thr, yellow_thr)
+        _render_csv_upload(
+            sel_ma, cw_static, green_thr, yellow_thr,
+            fallback_S=st.session_state.get(_k("use_S"), _default_S),
+            fallback_sigma_pct=st.session_state.get(_k("use_sigma_pct"), _default_sigma_pct),
+        )
 
     section_divider()
 
@@ -767,7 +857,7 @@ def render_issuer_hedging_tab():
             "⊛",
             "Chưa Có Dữ Liệu Lịch Sử Hedge",
             f"Nhập dữ liệu cho **{sel_ma}** ở form bên trên.",
-            "Ngày → S → σ → OI → p_T → Tính & Lưu",
+            "Cập nhật S & σ (nếu cần) → Nhập Ngày, OI, p_T → Tính & Lưu",
         )
         return
 
