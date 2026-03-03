@@ -144,7 +144,7 @@ def render_sigma_calc_tab():
     with col_method:
         method = st.radio(
             "Nhập dữ liệu bằng",
-            ["✏️ Nhập tay", "📁 Upload CSV"],
+            ["Nhập tay", "Upload CSV"],
             horizontal=True,
             key="sigma_input_method",
         )
@@ -154,7 +154,7 @@ def render_sigma_calc_tab():
     prices_raw: list[float] | None = None
 
     # ── Nhập tay ────────────────────────────────────────────────────────────
-    if method == "✏️ Nhập tay":
+    if method == "Nhập tay":
         st.markdown(
             "<p style='color:#8892A4;font-size:12px;margin-bottom:4px;'>"
             "Dán giá đóng cửa theo thứ tự cũ → mới. Phân cách bằng dấu phẩy, "
