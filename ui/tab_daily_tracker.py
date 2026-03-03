@@ -575,10 +575,10 @@ def render_daily_tracker_tab():
     # ============================================================
     # BACKTEST SECTION
     # ============================================================
-    _render_backtest_section()
+    _render_backtest_section(selected_ma)
 
 
-def _render_backtest_section():
+def _render_backtest_section(default_cw: str | None = None):
     """Phần Backtest: so sánh Giá Lý Thuyết vs Giá Thị Trường theo lịch sử."""
     import numpy as np
     import pandas as pd
@@ -600,9 +600,13 @@ def _render_backtest_section():
     # CW selector
     col_sel, _ = st.columns([2, 3])
     with col_sel:
+        default_idx = 0
+        if default_cw and default_cw in all_tracked:
+            default_idx = all_tracked.index(default_cw)
         selected_bt = st.selectbox(
             "Chọn CW để Backtest",
             all_tracked,
+            index=default_idx,
             key="backtest_cw_selector",
         )
 
@@ -624,14 +628,23 @@ def _render_backtest_section():
     section_divider()
     min_date = df_full["date"].min().date()
     max_date = df_full["date"].max().date()
+
+    # Detect CW change → reset date range về toàn bộ dữ liệu
+    if st.session_state.get("_bt_last_cw") != selected_bt:
+        st.session_state["_bt_last_cw"] = selected_bt
+        st.session_state["bt_start_date"] = min_date
+        st.session_state["bt_end_date"] = max_date
+
     c1, c2, _ = st.columns([1, 1, 2])
     with c1:
         start_date = st.date_input("Từ ngày", value=min_date,
                                    min_value=min_date, max_value=max_date,
+                                   format="DD/MM/YYYY",
                                    key="bt_start_date")
     with c2:
         end_date = st.date_input("Đến ngày", value=max_date,
                                  min_value=min_date, max_value=max_date,
+                                 format="DD/MM/YYYY",
                                  key="bt_end_date")
 
     df = df_full[

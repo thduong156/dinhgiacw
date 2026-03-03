@@ -96,6 +96,24 @@
       "time_value": 1069.4,
       "break_even": 100610.0,
       "score": 77
+    },
+    {
+      "date": "2026-03-03",
+      "S": 88200.0,
+      "cw_price": 1530.0,
+      "sigma": 0.33,
+      "theoretical_price": 1732.96,
+      "premium_discount_pct": -11.71,
+      "implied_volatility": 0.2758,
+      "delta": 0.092672,
+      "gamma": 2.26e-06,
+      "theta": -3.4158,
+      "effective_leverage": 5.34,
+      "moneyness": "ITM (Trong tiền)",
+      "intrinsic_value": 457.14,
+      "time_value": 1275.82,
+      "break_even": 95710.0,
+      "score": 85
     }
   ]
 }
