@@ -261,6 +261,17 @@ def delete_all_history(ma_cw: str) -> bool:
     return False
 
 
+def rename_daily_history(old_ma_cw: str, new_ma_cw: str) -> bool:
+    """Đổi tên file history khi mã CW thay đổi. Returns True nếu thành công."""
+    ensure_history_dir()
+    old_file = DAILY_HISTORY_DIR / f"{_safe_filename(old_ma_cw)}.json"
+    new_file = DAILY_HISTORY_DIR / f"{_safe_filename(new_ma_cw)}.json"
+    if old_file.exists() and old_file != new_file:
+        old_file.rename(new_file)
+        return True
+    return False
+
+
 def get_history_dataframe(ma_cw: str) -> Optional[pd.DataFrame]:
     """Load records vào pandas DataFrame. Returns None nếu không có data."""
     data = load_daily_history(ma_cw)

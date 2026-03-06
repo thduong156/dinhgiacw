@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import date, timedelta
+from data.daily_tracker import rename_daily_history
 
 
 def render_header():
@@ -577,6 +578,7 @@ def _render_edit_cw_form(cw: dict, index: int):
         col_save, col_cancel = st.columns(2)
         with col_save:
             if st.button("▪ Lưu", key=f"{prefix}_save", use_container_width=True):
+                old_ma_cw = cw.get("ma_cw", "")
                 T = max((maturity - date.today()).days / 365.0, 0.001)
                 days_rem = max((maturity - date.today()).days, 0)
                 updated = {
@@ -596,6 +598,10 @@ def _render_edit_cw_form(cw: dict, index: int):
 
                 portfolio = st.session_state["cw_portfolio"]
                 if index < len(portfolio):
+                    # Đổi tên file history nếu mã CW thay đổi
+                    new_ma_cw = updated["ma_cw"]
+                    if old_ma_cw and new_ma_cw and old_ma_cw.upper() != new_ma_cw.upper():
+                        rename_daily_history(old_ma_cw, new_ma_cw)
                     portfolio[index] = updated
                     st.session_state["cw_portfolio"] = portfolio
                     st.session_state[editing_key] = False
