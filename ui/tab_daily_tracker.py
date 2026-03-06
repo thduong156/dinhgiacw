@@ -224,7 +224,7 @@ def render_daily_tracker_tab():
 
     defaults = _get_portfolio_defaults(selected_ma)
 
-    with st.form(key="_daily_input_form", clear_on_submit=False):
+    with st.form(key="_daily_input_form", clear_on_submit=True):
         col_date, col_s, col_cw, col_sigma = st.columns(4)
 
         with col_date:
@@ -324,6 +324,7 @@ def render_daily_tracker_tab():
             if score is not None:
                 msg += f" | Score: **{int(score)}/100**"
             st.success(msg)
+            st.rerun()
 
     # ===== LOAD HISTORY =====
     section_divider()
